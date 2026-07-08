@@ -1,20 +1,27 @@
 // ==========================================================================
 // TeachToReach — shared front-end behaviour.
-// NOTE: There is no backend wired up yet. Every "submit" below stores the
-// payload in an in-memory object (window.__ttr_demo_store) and logs
-// it to the console so it's obvious what a future API call should receive.
-// When the FastAPI backend exists, replace the `fakeSubmit()` calls with a
-// real `fetch('/api/...', { method:'POST', body: JSON.stringify(payload) })`.
+// Form submissions are saved directly to Supabase (Postgres). The anon key
+// below is safe to expose client-side — it only has INSERT rights on the
+// two tables, enforced by Row Level Security policies (see db/schema.sql).
 // ==========================================================================
 
-window.__ttr_demo_store = { tutorRequests: [], tutorProfiles: [] };
+const SUPABASE_URL = 'https://iyfkunwywlqfgtyqouqp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Zmt1bnd5d2xxZmd0eXFvdXFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MjM3MjksImV4cCI6MjA5OTA5OTcyOX0.MZi1hwb4G2xPo16tUBaCtd5EXbNwGE8nGG1v6mR3AC4';
 
-function fakeSubmit(kind, payload) {
-  return new Promise((resolve) => {
-    console.log(`[demo submit] ${kind}`, payload);
-    window.__ttr_demo_store[kind].push(payload);
-    setTimeout(() => resolve({ ok: true }), 500);
+async function submitToSupabase(table, payload) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(payload),
   });
+  if (!res.ok) {
+    throw new Error(`Submission failed (${res.status}): ${await res.text()}`);
+  }
 }
 
 // ---------- Mobile nav ----------
@@ -48,8 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  initMultiStepForm('request-form', 'tutorRequests');
-  initMultiStepForm('tutor-form', 'tutorProfiles');
+  initMultiStepForm('request-form', 'tutor_requests');
+  initMultiStepForm('tutor-form', 'tutor_profiles');
   initAssignmentFilters();
   initNavScrollShadow();
   initScrollReveal();
@@ -84,7 +91,7 @@ function initScrollReveal() {
 }
 
 // ---------- Generic multi-step form controller ----------
-function initMultiStepForm(formId, storeKey) {
+function initMultiStepForm(formId, table) {
   const form = document.getElementById(formId);
   if (!form) return;
 
@@ -150,6 +157,7 @@ function initMultiStepForm(formId, storeKey) {
     if (!validatePane(panes[current])) return;
 
     const submitBtn = form.querySelector('[type=submit]');
+    const originalLabel = submitBtn?.textContent;
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Sending…';
@@ -162,7 +170,21 @@ function initMultiStepForm(formId, storeKey) {
       multiSelects[name] = Array.from(group.querySelectorAll('input:checked')).map((i) => i.value);
     });
 
-    await fakeSubmit(storeKey, { ...data, ...multiSelects, submittedAt: new Date().toISOString() });
+    const errorEl = form.querySelector('.form-error');
+    try {
+      await submitToSupabase(table, { ...data, ...multiSelects });
+    } catch (err) {
+      console.error(err);
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+      if (errorEl) {
+        errorEl.textContent = "Something went wrong sending this — check your connection and try again, or WhatsApp Grace directly.";
+        errorEl.style.display = 'block';
+      }
+      return;
+    }
 
     const successPane = form.querySelector('.success-pane-wrap');
     panes.forEach((p) => p.classList.remove('active'));

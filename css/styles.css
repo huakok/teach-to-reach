@@ -409,6 +409,7 @@ footer{ background:var(--teal-deep-2); color:var(--sand); padding:64px 0 28px; }
 .chip-select input:checked + label{ background:var(--jade); border-color:var(--jade); color:#fff; }
 
 .form-nav{ display:flex; justify-content:space-between; margin-top:32px; }
+.form-error{ color:#B3261E; font-size:0.85rem; margin-top:16px; }
 
 .success-pane{ text-align:center; padding:20px 0; }
 .success-pane .tile{ margin:0 auto 20px; }

@@ -6,7 +6,7 @@
 <title>Become a tutor — TeachToReach</title>
 <meta name="description" content="Register as a tutor with TeachToReach and get matched to assignments that fit your subjects, levels, location and rate.">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/styles.css?v=3">
+<link rel="stylesheet" href="css/styles.css?v=4">
 </head>
 <body>
 
@@ -37,7 +37,7 @@
 
 <section>
   <div class="container">
-    <div class="notice">This form isn't wired to a live system yet — submissions are stored in-browser for demo purposes only. <b>Next step:</b> this data becomes the profile the Telegram bot matches against once the backend is built.</div>
+    <div class="notice">Your profile is saved directly to Grace's system for review. <b>Next step:</b> once the Telegram bot is live, matching assignments will be sent straight to your Telegram based on the profile you submit here.</div>
 
     <form id="tutor-form" class="form-shell">
       <div class="progress">
@@ -159,6 +159,8 @@
           <textarea name="tutor_notes" placeholder="e.g. patient with weaker students, good with exam technique, strict on homework..."></textarea>
           <p class="hint">Grace reads every profile — this helps her (and eventually the bot) match you to students you'll actually enjoy teaching.</p>
         </div>
+        <p class="hint">By submitting, you agree to Grace contacting you about tutoring opportunities. Your details are stored securely and only used for assignment matching.</p>
+        <p class="form-error" style="display:none;"></p>
         <div class="form-nav">
           <button type="button" class="btn btn-outline" data-back>Back</button>
           <button type="submit" class="btn btn-coral">Submit profile</button>
@@ -186,6 +188,6 @@
   </div>
 </footer>
 
-<script src="js/main.js?v=3"></script>
+<script src="js/main.js?v=4"></script>
 </body>
 </html>
