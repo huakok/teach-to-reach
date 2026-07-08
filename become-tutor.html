@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Become a tutor — TeachToReach</title>
+<meta name="description" content="Register as a tutor with TeachToReach and get matched to assignments that fit your subjects, levels, location and rate.">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="container inner">
+    <a href="index.html" class="logo"><img src="assets/logo.svg" alt="TeachToReach" class="mark"><span><span class="wordmark">TeachToReach</span><span class="logo-tagline">Quality Education</span></span></a>
+    <ul class="nav-links">
+      <li><a href="index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html#subjects">Subjects</a></li>
+      <li><a href="index.html#rates">Rates</a></li>
+      <li><a href="assignments.html">Browse assignments</a></li>
+      <li><a href="become-tutor.html">Become a tutor</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a href="request-tutor.html" class="btn btn-coral">Request a tutor</a>
+      <button class="nav-toggle" aria-label="Menu">☰</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="container">
+    <span class="eyebrow">For tutors</span>
+    <h1>Get matched to assignments worth your time</h1>
+    <p>Fill in your profile once. Once it's set up, new assignments that fit your subjects, levels, area and rate get sent to you on Telegram — no more scrolling a group chat hoping something relevant shows up.</p>
+  </div>
+</header>
+
+<section>
+  <div class="container">
+    <div class="notice">This form isn't wired to a live system yet — submissions are stored in-browser for demo purposes only. <b>Next step:</b> this data becomes the profile the Telegram bot matches against once the backend is built.</div>
+
+    <form id="tutor-form" class="form-shell">
+      <div class="progress">
+        <div class="bar active"><span></span></div>
+        <div class="bar"><span></span></div>
+        <div class="bar"><span></span></div>
+        <div class="bar"><span></span></div>
+      </div>
+
+      <!-- Step 1: About you -->
+      <div class="step-pane active">
+        <span class="step-label">Step 1 of 4 · About you</span>
+        <div class="grid-2">
+          <div class="field">
+            <label for="tutor_name">Full name *</label>
+            <input type="text" id="tutor_name" name="tutor_name" required>
+          </div>
+          <div class="field">
+            <label for="tutor_phone">Phone / WhatsApp *</label>
+            <input type="tel" id="tutor_phone" name="tutor_phone" required placeholder="+65 9xxx xxxx">
+          </div>
+        </div>
+        <div class="field">
+          <label for="tutor_tier">Which best describes you? *</label>
+          <select id="tutor_tier" name="tutor_tier" required>
+            <option value="">Select</option>
+            <option>Part-time / Undergraduate tutor</option>
+            <option>Full-time tutor</option>
+            <option>Current MOE teacher</option>
+            <option>Ex-MOE teacher</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tutor_exp">Years of tutoring experience</label>
+          <input type="number" id="tutor_exp" name="tutor_exp" min="0" max="50" placeholder="e.g. 3">
+        </div>
+        <div class="form-nav">
+          <span></span>
+          <button type="button" class="btn btn-jade" data-next>Next</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Subjects & levels -->
+      <div class="step-pane">
+        <span class="step-label">Step 2 of 4 · What you teach</span>
+        <div class="field">
+          <label>Levels you teach *</label>
+          <div class="chip-select" data-multi="levels" data-require-one>
+            <input type="checkbox" id="l1" value="Preschool"><label for="l1">Preschool</label>
+            <input type="checkbox" id="l2" value="Primary"><label for="l2">Primary</label>
+            <input type="checkbox" id="l3" value="Secondary"><label for="l3">Secondary</label>
+            <input type="checkbox" id="l4" value="JC/A-Level"><label for="l4">JC / A-Level</label>
+            <input type="checkbox" id="l5" value="IB/IP"><label for="l5">IB / IP</label>
+            <input type="checkbox" id="l6" value="Polytechnic"><label for="l6">Polytechnic</label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Subjects you teach *</label>
+          <div class="chip-select" data-multi="subjects" data-require-one>
+            <input type="checkbox" id="ts1" value="Mathematics"><label for="ts1">Mathematics</label>
+            <input type="checkbox" id="ts2" value="Physics"><label for="ts2">Physics</label>
+            <input type="checkbox" id="ts3" value="Chemistry"><label for="ts3">Chemistry</label>
+            <input type="checkbox" id="ts4" value="Biology"><label for="ts4">Biology</label>
+            <input type="checkbox" id="ts5" value="English"><label for="ts5">English</label>
+            <input type="checkbox" id="ts6" value="Chinese"><label for="ts6">Chinese</label>
+            <input type="checkbox" id="ts7" value="Economics"><label for="ts7">Economics</label>
+            <input type="checkbox" id="ts8" value="Other"><label for="ts8">Other</label>
+          </div>
+        </div>
+        <div class="form-nav">
+          <button type="button" class="btn btn-outline" data-back>Back</button>
+          <button type="button" class="btn btn-jade" data-next>Next</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Rate, area, availability -->
+      <div class="step-pane">
+        <span class="step-label">Step 3 of 4 · Rate &amp; availability</span>
+        <div class="grid-2">
+          <div class="field">
+            <label for="rate_min">Rate range — from ($/hr) *</label>
+            <input type="number" id="rate_min" name="rate_min" required min="0" placeholder="e.g. 40">
+          </div>
+          <div class="field">
+            <label for="rate_max">to ($/hr) *</label>
+            <input type="number" id="rate_max" name="rate_max" required min="0" placeholder="e.g. 60">
+          </div>
+        </div>
+        <div class="field">
+          <label for="tutor_location">Preferred areas *</label>
+          <input type="text" id="tutor_location" name="tutor_location" required placeholder="e.g. Punggol, Sengkang, or 'anywhere North-East'">
+          <p class="hint">This is what the bot uses to filter which assignments reach you — be as specific or as broad as you like.</p>
+        </div>
+        <div class="field">
+          <label for="tutor_avail">Availability</label>
+          <select id="tutor_avail" name="tutor_avail">
+            <option>Weekday evenings</option>
+            <option>Weekday daytime</option>
+            <option>Weekends</option>
+            <option>Flexible / anytime</option>
+          </select>
+        </div>
+        <div class="form-nav">
+          <button type="button" class="btn btn-outline" data-back>Back</button>
+          <button type="button" class="btn btn-jade" data-next>Next</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Telegram + confirmation -->
+      <div class="step-pane">
+        <span class="step-label">Step 4 of 4 · Get matched on Telegram</span>
+        <div class="field">
+          <label for="telegram_handle">Telegram username</label>
+          <input type="text" id="telegram_handle" name="telegram_handle" placeholder="@yourhandle">
+          <p class="hint">Once the bot is live, this is where personalised assignment alerts get sent. You can also add it later.</p>
+        </div>
+        <div class="field">
+          <label>A little about your teaching style (optional)</label>
+          <textarea name="tutor_notes" placeholder="e.g. patient with weaker students, good with exam technique, strict on homework..."></textarea>
+          <p class="hint">Grace reads every profile — this helps her (and eventually the bot) match you to students you'll actually enjoy teaching.</p>
+        </div>
+        <div class="form-nav">
+          <button type="button" class="btn btn-outline" data-back>Back</button>
+          <button type="submit" class="btn btn-coral">Submit profile</button>
+        </div>
+      </div>
+
+      <div class="success-pane-wrap" style="display:none;">
+        <div class="success-pane">
+          <div class="tile tile-score high"><span class="num">✓</span></div>
+          <h3>Profile received.</h3>
+          <p>Grace will review it before you're added to the active pool. In the meantime, take a look at the kinds of assignments that come through.</p>
+          <a href="assignments.html" class="btn btn-jade">Browse assignments</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="foot-bottom">
+      <span>© 2026 TeachToReach. Built for Grace's tuition business.</span>
+      <span>Made in Singapore 🇸🇬</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

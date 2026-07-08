@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="TeachToReach logo">
+  <defs>
+    <linearGradient id="ttr-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F3D68A"/>
+      <stop offset="45%" stop-color="#C9A227"/>
+      <stop offset="100%" stop-color="#8F6A18"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="100" cy="100" r="100" fill="#0B0B0A"/>
+
+  <circle cx="100" cy="100" r="88" fill="none" stroke="url(#ttr-gold)" stroke-width="3.5"/>
+  <circle cx="101.5" cy="98.5" r="82" fill="none" stroke="url(#ttr-gold)" stroke-width="1.4" opacity="0.75"/>
+
+  <g fill="url(#ttr-gold)">
+    <path d="M118 52 L123.8 66.6 L139 68.4 L127.4 78.6 L131 93.6 L118 85.6 L105 93.6 L108.6 78.6 L97 68.4 L112.2 66.6 Z"/>
+    <path d="M89 92 L92 99.4 L99.8 100.4 L94 105.6 L95.8 113.2 L89 109.2 L82.2 113.2 L84 105.6 L78.2 100.4 L86 99.4 Z"/>
+    <path d="M74 118 L76 122.8 L81.2 123.4 L77.2 126.9 L78.5 132 L74 129.3 L69.5 132 L70.8 126.9 L66.8 123.4 L72 122.8 Z"/>
+    <path d="M112 89 L92 108" stroke="url(#ttr-gold)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+    <path d="M84 114 L76 121.5" stroke="url(#ttr-gold)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>

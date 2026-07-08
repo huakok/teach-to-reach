@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Request a tutor — TeachToReach</title>
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="container inner">
+    <a href="index.html" class="logo"><img src="assets/logo.svg" alt="TeachToReach" class="mark"><span><span class="wordmark">TeachToReach</span><span class="logo-tagline">Quality Education</span></span></a>
+    <ul class="nav-links">
+      <li><a href="index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html#subjects">Subjects</a></li>
+      <li><a href="index.html#rates">Rates</a></li>
+      <li><a href="assignments.html">Browse assignments</a></li>
+      <li><a href="become-tutor.html">Become a tutor</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a href="request-tutor.html" class="btn btn-coral">Request a tutor</a>
+      <button class="nav-toggle" aria-label="Menu">☰</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="container">
+    <span class="eyebrow">For parents</span>
+    <h1>Tell Grace what you're looking for</h1>
+    <p>Four short steps. The more specific you are, the better the shortlist — this goes to a real person, not a database query.</p>
+  </div>
+</header>
+
+<section>
+  <div class="container">
+    <div class="notice">This form isn't connected to a live inbox yet — submissions are stored in-browser for demo purposes only. <b>Next step:</b> wire this to the FastAPI backend once it's built.</div>
+
+    <form id="request-form" class="form-shell">
+      <div class="progress">
+        <div class="bar active"><span></span></div>
+        <div class="bar"><span></span></div>
+        <div class="bar"><span></span></div>
+        <div class="bar"><span></span></div>
+      </div>
+
+      <!-- Step 1: Student & level -->
+      <div class="step-pane active">
+        <span class="step-label">Step 1 of 4 · The student</span>
+        <div class="field">
+          <label for="student_level">What level is your child in? *</label>
+          <select id="student_level" name="student_level" required>
+            <option value="">Select level</option>
+            <option>Preschool / Kindergarten</option>
+            <option>Primary 1–3</option>
+            <option>Primary 4–6 (PSLE)</option>
+            <option>Secondary 1–2</option>
+            <option>Secondary 3–4 (O-Level)</option>
+            <option>JC 1–2 (A-Level)</option>
+            <option>IB / IP</option>
+            <option>Polytechnic</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="school_type">School type (optional)</label>
+          <input type="text" id="school_type" name="school_type" placeholder="e.g. Neighbourhood school, IP school">
+        </div>
+        <div class="field">
+          <label>Any specific concerns? (optional)</label>
+          <textarea name="concerns" placeholder="e.g. struggling with word problems, needs help staying focused, prefers a strict tutor..."></textarea>
+        </div>
+        <div class="form-nav">
+          <span></span>
+          <button type="button" class="btn btn-jade" data-next>Next</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Subjects -->
+      <div class="step-pane">
+        <span class="step-label">Step 2 of 4 · Subjects</span>
+        <div class="field">
+          <label>Which subject(s) do you need help with? *</label>
+          <div class="chip-select" data-multi="subjects" data-require-one>
+            <input type="checkbox" id="s1" value="Mathematics"><label for="s1">Mathematics</label>
+            <input type="checkbox" id="s2" value="Science"><label for="s2">Science</label>
+            <input type="checkbox" id="s3" value="English"><label for="s3">English</label>
+            <input type="checkbox" id="s4" value="Chinese"><label for="s4">Chinese</label>
+            <input type="checkbox" id="s5" value="Physics"><label for="s5">Physics</label>
+            <input type="checkbox" id="s6" value="Chemistry"><label for="s6">Chemistry</label>
+            <input type="checkbox" id="s7" value="Economics"><label for="s7">Economics</label>
+            <input type="checkbox" id="s8" value="Other"><label for="s8">Other</label>
+          </div>
+        </div>
+        <div class="form-nav">
+          <button type="button" class="btn btn-outline" data-back>Back</button>
+          <button type="button" class="btn btn-jade" data-next>Next</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Schedule & budget -->
+      <div class="step-pane">
+        <span class="step-label">Step 3 of 4 · Schedule &amp; budget</span>
+        <div class="grid-2">
+          <div class="field">
+            <label for="frequency">Lessons per week *</label>
+            <select id="frequency" name="frequency" required>
+              <option value="">Select</option>
+              <option>1x/week</option>
+              <option>2x/week</option>
+              <option>3x/week or more</option>
+              <option>Ad-hoc / exam prep only</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="budget">Budget per hour *</label>
+            <select id="budget" name="budget" required>
+              <option value="">Select</option>
+              <option>Under $30</option>
+              <option>$30–50</option>
+              <option>$50–80</option>
+              <option>$80–120</option>
+              <option>$120+</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="location">Area / neighbourhood *</label>
+          <input type="text" id="location" name="location" required placeholder="e.g. Punggol, Tampines, Bukit Timah">
+        </div>
+        <div class="field">
+          <label for="mode">Lesson mode</label>
+          <select id="mode" name="mode">
+            <option>At student's home</option>
+            <option>Online</option>
+            <option>Either works</option>
+          </select>
+        </div>
+        <div class="form-nav">
+          <button type="button" class="btn btn-outline" data-back>Back</button>
+          <button type="button" class="btn btn-jade" data-next>Next</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Contact -->
+      <div class="step-pane">
+        <span class="step-label">Step 4 of 4 · Your contact details</span>
+        <div class="grid-2">
+          <div class="field">
+            <label for="parent_name">Your name *</label>
+            <input type="text" id="parent_name" name="parent_name" required>
+          </div>
+          <div class="field">
+            <label for="parent_phone">Phone / WhatsApp *</label>
+            <input type="tel" id="parent_phone" name="parent_phone" required placeholder="+65 9xxx xxxx">
+          </div>
+        </div>
+        <div class="field">
+          <label for="parent_email">Email (optional)</label>
+          <input type="email" id="parent_email" name="parent_email">
+        </div>
+        <div class="form-nav">
+          <button type="button" class="btn btn-outline" data-back>Back</button>
+          <button type="submit" class="btn btn-coral">Submit request</button>
+        </div>
+      </div>
+
+      <div class="success-pane-wrap" style="display:none;">
+        <div class="success-pane">
+          <div class="tile tile-score high"><span class="num">✓</span></div>
+          <h3>Got it — thank you.</h3>
+          <p>Grace will look through this personally and get back to you with a shortlist within 24–48 hours, usually over WhatsApp.</p>
+          <a href="index.html" class="btn btn-jade">Back to home</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="foot-bottom">
+      <span>© 2026 TeachToReach. Built for Grace's tuition business.</span>
+      <span>Made in Singapore 🇸🇬</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

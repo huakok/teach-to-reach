@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browse assignments — TeachToReach</title>
+<meta name="description" content="A look at the kind of assignments TeachToReach tutors get matched to, ranked by fit.">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="container inner">
+    <a href="index.html" class="logo"><img src="assets/logo.svg" alt="TeachToReach" class="mark"><span><span class="wordmark">TeachToReach</span><span class="logo-tagline">Quality Education</span></span></a>
+    <ul class="nav-links">
+      <li><a href="index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html#subjects">Subjects</a></li>
+      <li><a href="index.html#rates">Rates</a></li>
+      <li><a href="assignments.html">Browse assignments</a></li>
+      <li><a href="become-tutor.html">Become a tutor</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a href="request-tutor.html" class="btn btn-coral">Request a tutor</a>
+      <button class="nav-toggle" aria-label="Menu">☰</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="container">
+    <span class="eyebrow">For tutors</span>
+    <h1>What a matched tutor sees</h1>
+    <p>This is a preview of the assignment board — the same one the Telegram bot will draw from once it's live. The <b style="color:var(--marigold);">% fit</b> badge is a placeholder for the matching logic: subject + level + location + rate, weighted and scored against your profile.</p>
+  </div>
+</header>
+
+<section>
+  <div class="container">
+    <div class="notice">These are sample assignments for demo purposes — not live listings. Once the backend exists, this board (and the bot) will pull from the same database as the tutor and parent forms.</div>
+
+    <div class="filters">
+      <select id="filter-level">
+        <option value="all">All levels</option>
+        <option value="Primary">Primary</option>
+        <option value="Secondary">Secondary</option>
+        <option value="JC">JC / A-Level</option>
+      </select>
+      <select id="filter-subject">
+        <option value="all">All subjects</option>
+        <option value="Mathematics">Mathematics</option>
+        <option value="Science">Science</option>
+        <option value="English">English</option>
+        <option value="Chinese">Chinese</option>
+      </select>
+    </div>
+
+    <div class="assignment-grid">
+
+      <div class="assignment-card" data-level="Secondary" data-subject="Mathematics">
+        <div class="tile-score high"><span class="num">93%</span><span class="lbl">FIT</span></div>
+        <div class="body">
+          <h4>Sec 4 A-Math</h4>
+          <div class="tags"><span class="tag">Punggol</span><span class="tag">$60–70/hr</span><span class="tag">2x/week, evenings</span></div>
+          <p style="font-size:0.88rem;color:var(--ink-soft);">Preparing for O-Levels, needs help with calculus &amp; trigonometry.</p>
+          <div class="meta-row"><span>Posted 12 min ago</span><span class="rate">$65/hr</span></div>
+        </div>
+      </div>
+
+      <div class="assignment-card" data-level="Primary" data-subject="English">
+        <div class="tile-score mid"><span class="num">78%</span><span class="lbl">FIT</span></div>
+        <div class="body">
+          <h4>Primary 5 English</h4>
+          <div class="tags"><span class="tag">Bishan</span><span class="tag">$35–45/hr</span><span class="tag">1x/week</span></div>
+          <p style="font-size:0.88rem;color:var(--ink-soft);">Composition &amp; comprehension, weekly practice ahead of PSLE.</p>
+          <div class="meta-row"><span>Posted 1 hr ago</span><span class="rate">$40/hr</span></div>
+        </div>
+      </div>
+
+      <div class="assignment-card" data-level="JC" data-subject="Science">
+        <div class="tile-score high"><span class="num">88%</span><span class="lbl">FIT</span></div>
+        <div class="body">
+          <h4>JC1 H2 Chemistry</h4>
+          <div class="tags"><span class="tag">Tampines</span><span class="tag">$70–90/hr</span><span class="tag">Weekly</span></div>
+          <p style="font-size:0.88rem;color:var(--ink-soft);">Strong in lectures, needs help translating theory into exam technique.</p>
+          <div class="meta-row"><span>Posted 3 hr ago</span><span class="rate">$80/hr</span></div>
+        </div>
+      </div>
+
+      <div class="assignment-card" data-level="Secondary" data-subject="Chinese">
+        <div class="tile-score low"><span class="num">41%</span><span class="lbl">FIT</span></div>
+        <div class="body">
+          <h4>Sec 2 Chinese</h4>
+          <div class="tags"><span class="tag">Jurong West</span><span class="tag">$30–40/hr</span><span class="tag">Ad-hoc</span></div>
+          <p style="font-size:0.88rem;color:var(--ink-soft);">Conversational practice, exam technique for oral component.</p>
+          <div class="meta-row"><span>Posted 5 hr ago</span><span class="rate">$35/hr</span></div>
+        </div>
+      </div>
+
+      <div class="assignment-card" data-level="Primary" data-subject="Mathematics">
+        <div class="tile-score mid"><span class="num">72%</span><span class="lbl">FIT</span></div>
+        <div class="body">
+          <h4>Primary 6 Math</h4>
+          <div class="tags"><span class="tag">Ang Mo Kio</span><span class="tag">$40–50/hr</span><span class="tag">2x/week</span></div>
+          <p style="font-size:0.88rem;color:var(--ink-soft);">PSLE prep, needs work on model-drawing and word problems.</p>
+          <div class="meta-row"><span>Posted 6 hr ago</span><span class="rate">$45/hr</span></div>
+        </div>
+      </div>
+
+      <div class="assignment-card" data-level="Secondary" data-subject="Science">
+        <div class="tile-score high"><span class="num">90%</span><span class="lbl">FIT</span></div>
+        <div class="body">
+          <h4>Sec 3 Physics</h4>
+          <div class="tags"><span class="tag">Punggol</span><span class="tag">$50–65/hr</span><span class="tag">Weekly</span></div>
+          <p style="font-size:0.88rem;color:var(--ink-soft);">Just started O-Level syllabus, wants a strong foundation early.</p>
+          <div class="meta-row"><span>Posted 8 hr ago</span><span class="rate">$55/hr</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--paper-2);">
+  <div class="container">
+    <div class="cta-band" style="background:var(--teal-deep);">
+      <h2>Want assignments like these sent straight to you?</h2>
+      <a href="become-tutor.html" class="btn btn-coral">Register as a tutor</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="foot-bottom">
+      <span>© 2026 TeachToReach. Built for Grace's tuition business.</span>
+      <span>Made in Singapore 🇸🇬</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
