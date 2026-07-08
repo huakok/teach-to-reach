@@ -24,6 +24,116 @@ async function submitToSupabase(table, payload) {
   }
 }
 
+async function fetchTutorMatches(params) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/match_tutors`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    throw new Error(`Match lookup failed (${res.status}): ${await res.text()}`);
+  }
+  return res.json();
+}
+
+// Parent-facing level dropdown is more granular than the tutor "levels" buckets.
+function mapLevelToBucket(level) {
+  if (!level) return null;
+  if (level.startsWith('Preschool')) return 'Preschool';
+  if (level.startsWith('Primary')) return 'Primary';
+  if (level.startsWith('Secondary')) return 'Secondary';
+  if (level.startsWith('JC')) return 'JC/A-Level';
+  if (level.startsWith('IB')) return 'IB/IP';
+  if (level.startsWith('Polytechnic')) return 'Polytechnic';
+  return null;
+}
+
+function mapBudgetToRange(budget) {
+  switch (budget) {
+    case 'Under $30': return { min: 0, max: 30 };
+    case '$30–50': return { min: 30, max: 50 };
+    case '$50–80': return { min: 50, max: 80 };
+    case '$80–120': return { min: 80, max: 120 };
+    case '$120+': return { min: 120, max: 9999 };
+    default: return { min: 0, max: 9999 };
+  }
+}
+
+// Parents can only pick generic "Science"; tutors register specific sciences.
+function expandSubjectsForMatching(subjects) {
+  const expanded = new Set();
+  (subjects || []).forEach((s) => {
+    if (s === 'Science') {
+      ['Physics', 'Chemistry', 'Biology'].forEach((sub) => expanded.add(sub));
+    } else {
+      expanded.add(s);
+    }
+  });
+  return Array.from(expanded);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+async function showTutorMatchTeaser(form, payload) {
+  const container = form.querySelector('.match-teaser');
+  if (!container) return;
+
+  const budgetRange = mapBudgetToRange(payload.budget);
+  let results;
+  try {
+    results = await fetchTutorMatches({
+      p_subjects: expandSubjectsForMatching(payload.subjects),
+      p_level_bucket: mapLevelToBucket(payload.student_level),
+      p_location: payload.location || null,
+      p_budget_min: budgetRange.min,
+      p_budget_max: budgetRange.max,
+    });
+  } catch (err) {
+    console.error(err);
+    return; // the human-reviewed fallback message already covers this
+  }
+
+  if (!results || results.length === 0) {
+    container.innerHTML = '<p class="match-teaser-empty">No exact match in the pool yet — Grace will personally source one for you within 24–48 hours.</p>';
+    container.style.display = 'block';
+    return;
+  }
+
+  const cards = results.map((r) => {
+    const scoreBand = r.score >= 80 ? 'high' : r.score >= 50 ? 'mid' : 'low';
+    const rate = (r.rate_min && r.rate_max) ? `$${r.rate_min}–${r.rate_max}/hr` : '';
+    const subjectsLabel = (r.subjects || []).slice(0, 3).join(', ');
+    return `
+      <div class="match-teaser-card">
+        <div class="tile-score ${scoreBand}"><span class="num">${r.score}%</span><span class="lbl">FIT</span></div>
+        <div>
+          <h4>${escapeHtml(r.tutor_tier || 'Tutor')}</h4>
+          <div class="tags">
+            ${rate ? `<span class="tag">${escapeHtml(rate)}</span>` : ''}
+            ${r.tutor_location ? `<span class="tag">${escapeHtml(r.tutor_location)}</span>` : ''}
+            ${r.tutor_avail ? `<span class="tag">${escapeHtml(r.tutor_avail)}</span>` : ''}
+          </div>
+          <p class="meta">Teaches ${escapeHtml(subjectsLabel)}</p>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <p class="match-teaser-intro">${results.length} tutor${results.length > 1 ? 's' : ''} in the pool already look like a good fit:</p>
+    ${cards}
+    <p class="match-teaser-note">Grace will confirm details and personally introduce you to the best fit within 24–48 hours.</p>
+  `;
+  container.style.display = 'block';
+}
+
 // ---------- Mobile nav ----------
 document.addEventListener('DOMContentLoaded', () => {
   const toggle = document.querySelector('.nav-toggle');
@@ -55,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  initMultiStepForm('request-form', 'tutor_requests');
+  initMultiStepForm('request-form', 'tutor_requests', showTutorMatchTeaser);
   initMultiStepForm('tutor-form', 'tutor_profiles');
   initAssignmentFilters();
   initNavScrollShadow();
@@ -91,7 +201,7 @@ function initScrollReveal() {
 }
 
 // ---------- Generic multi-step form controller ----------
-function initMultiStepForm(formId, table) {
+function initMultiStepForm(formId, table, onSuccess) {
   const form = document.getElementById(formId);
   if (!form) return;
 
@@ -170,9 +280,10 @@ function initMultiStepForm(formId, table) {
       multiSelects[name] = Array.from(group.querySelectorAll('input:checked')).map((i) => i.value);
     });
 
+    const payload = { ...data, ...multiSelects };
     const errorEl = form.querySelector('.form-error');
     try {
-      await submitToSupabase(table, { ...data, ...multiSelects });
+      await submitToSupabase(table, payload);
     } catch (err) {
       console.error(err);
       if (submitBtn) {
@@ -191,6 +302,10 @@ function initMultiStepForm(formId, table) {
     bars.forEach((b) => { b.classList.add('done'); b.classList.remove('active'); });
     if (successPane) successPane.style.display = 'block';
     form.querySelector('.form-nav-wrap')?.style && (form.querySelector('.form-nav-wrap').style.display = 'none');
+
+    if (typeof onSuccess === 'function') {
+      onSuccess(form, payload);
+    }
   });
 
   render();

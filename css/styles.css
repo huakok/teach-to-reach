@@ -416,6 +416,23 @@ footer{ background:var(--teal-deep-2); color:var(--sand); padding:64px 0 28px; }
 .success-pane h3{ font-size:1.4rem; margin-bottom:10px; }
 .success-pane p{ color:var(--ink-soft); max-width:48ch; margin:0 auto 24px; }
 
+/* ---------- Instant tutor-match teaser (in the request-a-tutor success pane) ---------- */
+.match-teaser{
+  text-align:left; max-width:520px; margin:0 auto 24px;
+  padding-top:20px; border-top:1px dashed var(--line);
+}
+.match-teaser-intro{ font-weight:600; margin-bottom:10px; color:var(--ink); }
+.match-teaser-card{
+  display:flex; gap:14px; align-items:flex-start;
+  padding:14px 0; border-bottom:1px solid var(--line);
+}
+.match-teaser-card:last-of-type{ border-bottom:none; }
+.match-teaser-card .tile-score{ width:52px; height:52px; flex-shrink:0; }
+.match-teaser-card h4{ font-size:1rem; margin-bottom:4px; }
+.match-teaser-card .tags{ display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; }
+.match-teaser-card .meta{ font-size:0.85rem; color:var(--ink-soft); }
+.match-teaser-note, .match-teaser-empty{ font-size:0.85rem; color:var(--ink-soft); margin-top:14px; }
+
 /* ---------- Assignments page ---------- */
 .filters{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:36px; }
 .filters select{ padding:10px 14px; border:1.5px solid var(--line); border-radius:var(--radius-s); background:#fff; }
