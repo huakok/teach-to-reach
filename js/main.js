@@ -24,8 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (toggle && links) {
     toggle.addEventListener('click', () => {
       const open = links.style.display === 'flex';
+      const navHeight = document.querySelector('.site-nav .inner').offsetHeight;
       links.style.display = open ? 'none' : 'flex';
-      links.style.cssText += open ? '' : 'position:absolute;top:76px;left:0;right:0;background:#12332C;flex-direction:column;padding:20px 24px;gap:18px;';
+      links.style.cssText += open ? '' : `position:absolute;top:${navHeight}px;left:0;right:0;background:#0B0B0A;border-bottom:1px solid rgba(232,196,104,0.22);flex-direction:column;padding:20px 24px;gap:18px;`;
     });
   }
 
@@ -50,7 +51,37 @@ document.addEventListener('DOMContentLoaded', () => {
   initMultiStepForm('request-form', 'tutorRequests');
   initMultiStepForm('tutor-form', 'tutorProfiles');
   initAssignmentFilters();
+  initNavScrollShadow();
+  initScrollReveal();
 });
+
+// ---------- Nav shadow on scroll ----------
+function initNavScrollShadow() {
+  const nav = document.querySelector('.site-nav');
+  if (!nav) return;
+  const toggle = () => nav.classList.toggle('scrolled', window.scrollY > 8);
+  toggle();
+  window.addEventListener('scroll', toggle, { passive: true });
+}
+
+// ---------- Fade-up reveal on scroll ----------
+function initScrollReveal() {
+  const targets = document.querySelectorAll('.reveal');
+  if (!targets.length) return;
+  if (!('IntersectionObserver' in window)) {
+    targets.forEach((t) => t.classList.add('in'));
+    return;
+  }
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+  targets.forEach((t) => observer.observe(t));
+}
 
 // ---------- Generic multi-step form controller ----------
 function initMultiStepForm(formId, storeKey) {

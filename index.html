@@ -6,7 +6,7 @@
 <title>TeachToReach — Personal tutor matching in Singapore</title>
 <meta name="description" content="Grace matches Singapore families with the right tutor — and soon, tutors get matched to assignments that actually fit them, straight on Telegram.">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/styles.css?v=3">
 </head>
 <body>
 
@@ -28,6 +28,11 @@
 </nav>
 
 <header class="hero">
+  <svg class="hero-deco" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path fill="#E8C468" d="M118 52 L123.8 66.6 L139 68.4 L127.4 78.6 L131 93.6 L118 85.6 L105 93.6 L108.6 78.6 L97 68.4 L112.2 66.6 Z"/>
+    <path fill="#E8C468" d="M89 92 L92 99.4 L99.8 100.4 L94 105.6 L95.8 113.2 L89 109.2 L82.2 113.2 L84 105.6 L78.2 100.4 L86 99.4 Z"/>
+    <path fill="#E8C468" d="M74 118 L76 122.8 L81.2 123.4 L77.2 126.9 L78.5 132 L74 129.3 L69.5 132 L70.8 126.9 L66.8 123.4 L72 122.8 Z"/>
+  </svg>
   <div class="container inner">
     <div>
       <span class="eyebrow">Personal tutor matching · Singapore-wide</span>
@@ -59,6 +64,13 @@
   <div class="tile-divider"></div>
 </header>
 
+<div class="marquee-strip">
+  <div class="marquee-track">
+    <span>Punggol</span><span>Tampines</span><span>Bishan</span><span>Bukit Timah</span><span>Sengkang</span><span>Jurong West</span><span>Ang Mo Kio</span><span>Serangoon</span><span>Clementi</span><span>Woodlands</span>
+    <span>Punggol</span><span>Tampines</span><span>Bishan</span><span>Bukit Timah</span><span>Sengkang</span><span>Jurong West</span><span>Ang Mo Kio</span><span>Serangoon</span><span>Clementi</span><span>Woodlands</span>
+  </div>
+</div>
+
 <section id="how-it-works">
   <div class="container">
     <div class="section-head center" style="margin-left:auto;margin-right:auto;">
@@ -66,7 +78,7 @@
       <h2>Three steps, one real human keeping it honest</h2>
       <p>No algorithm picks blind. Grace reviews every request and every tutor profile before anything gets matched.</p>
     </div>
-    <div class="steps">
+    <div class="steps reveal">
       <div class="step">
         <span class="n">01</span>
         <h3>Tell us what you need</h3>
@@ -88,7 +100,7 @@
 
 <section style="background:var(--paper-2);">
   <div class="container">
-    <div class="split">
+    <div class="split reveal">
       <div class="split-card parent">
         <h3>Looking for a tutor?</h3>
         <ul>
@@ -118,7 +130,7 @@
       <h2>From Primary 1 to JC, across the full spread</h2>
       <p>These are the areas we place most often — if yours isn't listed, ask anyway.</p>
     </div>
-    <div class="subject-grid">
+    <div class="subject-grid reveal">
       <div class="subject-chip">
         <div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M9 9h6v6H9z"/></svg></div>
         <h4>Mathematics</h4><p>Primary · Sec · A-Math · E-Math</p>
@@ -154,7 +166,7 @@
       <h2>What tuition typically costs</h2>
       <p>Actual rates are set case-by-case based on the tutor's profile and your requirements — this is a starting reference, not a fixed price list.</p>
     </div>
-    <div class="rates-wrap">
+    <div class="rates-wrap reveal">
       <table class="rates">
         <thead>
           <tr><th>Tutor tier</th><th>Primary</th><th>Secondary</th><th>JC / A-Level</th></tr>
@@ -175,21 +187,21 @@
       <span class="eyebrow">Families say</span>
       <h2>What working with Grace has been like</h2>
     </div>
-    <div class="testi-grid">
+    <div class="testi-grid reveal">
       <div class="testi">
         <div class="stars">★★★★★</div>
         <p>"Grace actually asked about my son's attention span before suggesting anyone. Small thing, but no other agency bothered."</p>
-        <div class="who">Mrs. Tan · Parent, Sec 2</div>
+        <div class="who"><span class="avatar">MT</span> Mrs. Tan · Parent, Sec 2</div>
       </div>
       <div class="testi">
         <div class="stars">★★★★★</div>
         <p>"Swapped tutors once because the first one wasn't a great fit — no drama, sorted within a week."</p>
-        <div class="who">Mr. Rahman · Parent, Primary 5</div>
+        <div class="who"><span class="avatar">MR</span> Mr. Rahman · Parent, Primary 5</div>
       </div>
       <div class="testi">
         <div class="stars">★★★★☆</div>
         <p>"As a tutor, I used to get flooded with assignments miles from home. Now I only hear about the ones worth my time."</p>
-        <div class="who">Wei Jie · Tutor, Physics &amp; Math</div>
+        <div class="who"><span class="avatar">WJ</span> Wei Jie · Tutor, Physics &amp; Math</div>
       </div>
     </div>
   </div>
@@ -201,7 +213,7 @@
       <span class="eyebrow">FAQ</span>
       <h2>Good to know</h2>
     </div>
-    <div class="faq-list">
+    <div class="faq-list reveal">
       <div class="faq-item">
         <button class="faq-q">Is there a fee to request a tutor? <span class="plus">+</span></button>
         <div class="faq-a"><p>No — submitting a request and getting a shortlist is free for parents. Agency commission is only built into the tutor's rate.</p></div>
@@ -224,7 +236,7 @@
 
 <section>
   <div class="container">
-    <div class="cta-band">
+    <div class="cta-band reveal">
       <h2>Ready to find someone who actually fits?</h2>
       <div style="display:flex;gap:14px;flex-wrap:wrap;">
         <a href="request-tutor.html" class="btn btn-coral">Request a tutor</a>
@@ -265,6 +277,6 @@
   </div>
 </footer>
 
-<script src="js/main.js"></script>
+<script src="js/main.js?v=3"></script>
 </body>
 </html>
