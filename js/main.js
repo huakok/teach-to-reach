@@ -170,7 +170,19 @@ document.addEventListener('DOMContentLoaded', () => {
   initAssignmentFilters();
   initNavScrollShadow();
   initScrollReveal();
+  initHeroEntrance();
 });
+
+// ---------- Hero entrance sequence (page load, once, respects reduced motion) ----------
+function initHeroEntrance() {
+  const els = document.querySelectorAll('.hero-enter');
+  if (!els.length) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      els.forEach((el) => el.classList.add('in'));
+    });
+  });
+}
 
 // ---------- Nav shadow on scroll ----------
 function initNavScrollShadow() {
