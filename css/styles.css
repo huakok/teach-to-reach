@@ -461,6 +461,18 @@ footer{ background:var(--teal-deep-2); color:var(--sand); padding:64px 0 28px; }
 }
 .notice b{ color:var(--jade); }
 
+/* ---------- Telegram channel CTA (become-tutor page) ---------- */
+.telegram-cta{
+  background:#fff; border:1.5px solid var(--line); border-left:4px solid #2AABEE;
+  border-radius:var(--radius-m); padding:28px; margin-bottom:28px;
+  display:flex; flex-wrap:wrap; gap:20px; align-items:center; justify-content:space-between;
+}
+.telegram-cta-text{ flex:1; min-width:240px; }
+.telegram-cta-text .tg-strip{ margin-bottom:10px; }
+.telegram-cta-text h3{ font-size:1.2rem; margin-bottom:8px; }
+.telegram-cta-text p{ color:var(--ink-soft); font-size:0.92rem; max-width:56ch; }
+.telegram-cta-btn{ flex-shrink:0; white-space:nowrap; }
+
 /* ---------- Texture: faint dot-grain on dark surfaces ---------- */
 .hero, .split-card.parent, .cta-band, footer, .page-head{ position:relative; }
 .hero::before, .split-card.parent::before, .cta-band::before, footer::before, .page-head::before{
