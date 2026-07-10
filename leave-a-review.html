@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leave a review — TeachToReach</title>
+<meta name="description" content="Tell other parents and tutors what working with TeachToReach has been like.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TeachToReach">
+<meta property="og:title" content="Leave a review — TeachToReach">
+<meta property="og:description" content="Tell other parents and tutors what working with TeachToReach has been like.">
+<meta property="og:image" content="https://teach-to-reach.netlify.app/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://teach-to-reach.netlify.app/leave-a-review.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Leave a review — TeachToReach">
+<meta name="twitter:description" content="Tell other parents and tutors what working with TeachToReach has been like.">
+<meta name="twitter:image" content="https://teach-to-reach.netlify.app/assets/og-image.png">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css?v=9">
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="container inner">
+    <a href="index.html" class="logo"><img src="assets/logo.svg" alt="TeachToReach" class="mark"><span><span class="wordmark">TeachToReach</span><span class="logo-tagline">Quality Education</span></span></a>
+    <ul class="nav-links">
+      <li><a href="index.html#how-it-works">How it works</a></li>
+      <li><a href="index.html#subjects">Subjects</a></li>
+      <li><a href="index.html#rates">Rates</a></li>
+      <li><a href="assignments.html">Browse assignments</a></li>
+      <li><a href="become-tutor.html">Become a tutor</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a href="request-tutor.html" class="btn btn-coral">Request a tutor</a>
+      <button class="nav-toggle" aria-label="Menu">☰</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="container">
+    <span class="eyebrow">Families &amp; tutors say</span>
+    <h1>How has TeachToReach been for you?</h1>
+    <p>Whether you found a tutor, got matched to assignments, or worked with Grace directly — a couple of honest sentences helps other families and tutors decide.</p>
+  </div>
+</header>
+
+<section>
+  <div class="container" style="max-width:640px;">
+    <div class="notice">Reviews are read by Grace before they're posted publicly — so there may be a short delay before yours appears on the site.</div>
+
+    <form id="review-form" class="form-shell">
+      <div class="field">
+        <label>Overall, how would you rate it? *</label>
+        <div class="star-input">
+          <input type="radio" name="rating" id="star5" value="5"><label for="star5" title="5 stars">★</label>
+          <input type="radio" name="rating" id="star4" value="4"><label for="star4" title="4 stars">★</label>
+          <input type="radio" name="rating" id="star3" value="3"><label for="star3" title="3 stars">★</label>
+          <input type="radio" name="rating" id="star2" value="2"><label for="star2" title="2 stars">★</label>
+          <input type="radio" name="rating" id="star1" value="1"><label for="star1" title="1 star">★</label>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="author_name">Your name *</label>
+          <input type="text" id="author_name" name="author_name" required placeholder="e.g. Mrs. Tan">
+        </div>
+        <div class="field">
+          <label for="role">I am a *</label>
+          <select id="role" name="role" required>
+            <option value="">Select</option>
+            <option value="Parent">Parent</option>
+            <option value="Tutor">Tutor</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="context">A little context *</label>
+        <input type="text" id="context" name="context" required placeholder="e.g. Parent, Sec 2 · or · Tutor, Physics &amp; Math">
+      </div>
+
+      <div class="field">
+        <label for="review_text">Your review *</label>
+        <textarea id="review_text" name="review_text" required placeholder="What was your experience like?"></textarea>
+      </div>
+
+      <p class="form-error" style="display:none;"></p>
+      <div class="form-nav">
+        <span></span>
+        <button type="submit" class="btn btn-coral">Submit review</button>
+      </div>
+    </form>
+
+    <div class="review-success" style="display:none;">
+      <div class="success-pane">
+        <div class="tile tile-score high"><span class="num">✓</span></div>
+        <h3>Thank you!</h3>
+        <p>Grace will take a look and get it posted soon.</p>
+        <a href="index.html" class="btn btn-jade">Back to home</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="foot-bottom">
+      <span>© 2026 TeachToReach. Built for Grace's tuition business. · <a href="privacy.html" style="text-decoration:underline;">Privacy</a> · <a href="leave-a-review.html" style="text-decoration:underline;">Leave a review</a></span>
+      <span>Made in Singapore 🇸🇬</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js?v=9"></script>
+</body>
+</html>

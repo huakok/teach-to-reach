@@ -171,7 +171,114 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavScrollShadow();
   initScrollReveal();
   initHeroEntrance();
+  initReviewForm();
+  loadApprovedReviews();
 });
+
+// ---------- Star rating input: keep the hidden number input in sync ----------
+function initStarInput() {
+  const group = document.querySelector('.star-input');
+  if (!group) return;
+  group.querySelectorAll('input').forEach((input) => {
+    input.addEventListener('change', () => {
+      group.dataset.rating = input.value;
+    });
+  });
+}
+
+// ---------- Review submission form (single-step, not the multi-step wizard) ----------
+function initReviewForm() {
+  const form = document.getElementById('review-form');
+  if (!form) return;
+  initStarInput();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const rating = form.querySelector('.star-input input:checked')?.value;
+    const errorEl = form.querySelector('.form-error');
+    if (!rating) {
+      if (errorEl) {
+        errorEl.textContent = 'Please pick a star rating.';
+        errorEl.style.display = 'block';
+      }
+      return;
+    }
+
+    const submitBtn = form.querySelector('[type=submit]');
+    const originalLabel = submitBtn?.textContent;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending…';
+    }
+
+    const data = Object.fromEntries(new FormData(form).entries());
+    try {
+      await submitToSupabase('reviews', {
+        author_name: data.author_name,
+        role: data.role,
+        context: data.context,
+        rating: Number(rating),
+        review_text: data.review_text,
+        approved: false,
+      });
+    } catch (err) {
+      console.error(err);
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+      if (errorEl) {
+        errorEl.textContent = 'Something went wrong sending this — please try again.';
+        errorEl.style.display = 'block';
+      }
+      return;
+    }
+
+    form.style.display = 'none';
+    const successPane = document.querySelector('.review-success');
+    if (successPane) successPane.style.display = 'block';
+  });
+}
+
+// ---------- Load approved reviews onto the homepage (falls back to the static markup on error) ----------
+async function loadApprovedReviews() {
+  const container = document.querySelector('.testi-grid');
+  if (!container) return;
+
+  let reviews;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/reviews?select=author_name,role,context,rating,review_text&approved=eq.true&order=created_at.desc&limit=6`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    if (!res.ok) return; // leave static fallback in place
+    reviews = await res.json();
+  } catch (err) {
+    console.error(err);
+    return; // leave static fallback in place
+  }
+
+  if (!reviews || !reviews.length) return;
+
+  container.innerHTML = reviews.map((r) => {
+    const rating = Math.max(0, Math.min(5, Number(r.rating) || 0));
+    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    const initials = (r.author_name || '?')
+      .split(' ')
+      .map((w) => w[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+    return `
+      <div class="testi">
+        <div class="stars">${stars}</div>
+        <p>&ldquo;${escapeHtml(r.review_text)}&rdquo;</p>
+        <div class="who"><span class="avatar">${escapeHtml(initials)}</span> ${escapeHtml(r.author_name)} · ${escapeHtml(r.context)}</div>
+      </div>`;
+  }).join('');
+}
 
 // ---------- Hero entrance sequence (page load, once, respects reduced motion) ----------
 function initHeroEntrance() {

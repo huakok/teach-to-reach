@@ -127,3 +127,54 @@ end;
 $$;
 
 grant execute on function match_tutors(text[], text, text, numeric, numeric) to anon;
+
+-- ==========================================================================
+-- Reviews
+--
+-- Same insert-only pattern as the two tables above, but with one addition:
+-- a public SELECT policy scoped to `approved = true`. Nothing shows on the
+-- site until someone flips that flag in the Supabase Table Editor — this is
+-- deliberate curation, not an auto-publish-on-4-stars filter, to match the
+-- site's whole "a real human reviews everything" positioning.
+-- ==========================================================================
+
+create table if not exists reviews (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  author_name text,
+  role text,        -- 'Parent' or 'Tutor'
+  context text,      -- e.g. "Parent, Sec 2" or "Tutor, Physics & Math"
+  rating int,
+  review_text text,
+  approved boolean not null default false
+);
+
+alter table reviews enable row level security;
+
+drop policy if exists "Public can submit reviews" on reviews;
+create policy "Public can submit reviews"
+  on reviews for insert
+  to anon
+  with check (approved = false);  -- can't self-approve via a crafted API call
+
+drop policy if exists "Public can read approved reviews" on reviews;
+create policy "Public can read approved reviews"
+  on reviews for select
+  to anon
+  using (approved = true);
+
+-- Seed mockup reviews (approved) so the section isn't empty while real ones
+-- trickle in. Only runs if the table is currently empty, so re-running this
+-- whole file won't duplicate rows. Safe to delete these once you have
+-- enough real ones — see db/README or just delete by author_name in the
+-- Table Editor.
+insert into reviews (author_name, role, context, rating, review_text, approved)
+select * from (values
+  ('Mrs. Tan', 'Parent', 'Parent, Sec 2', 5, 'Grace actually asked about my son''s attention span before suggesting anyone. Small thing, but no other agency bothered.', true),
+  ('Mr. Rahman', 'Parent', 'Parent, Primary 5', 5, 'Swapped tutors once because the first one wasn''t a great fit — no drama, sorted within a week.', true),
+  ('Wei Jie', 'Tutor', 'Tutor, Physics & Math', 4, 'As a tutor, I used to get flooded with assignments miles from home. Now I only hear about the ones worth my time.', true),
+  ('Mrs. Lim', 'Parent', 'Parent, JC2', 5, 'Found someone who actually knew the H2 syllabus cold, not just "can teach everything." Made a real difference for the A-Levels.', true),
+  ('Mdm. Farah', 'Parent', 'Parent, Primary 3', 5, 'My daughter needed a patient tutor, not a strict one. Grace got that right on the first try.', true),
+  ('Priya', 'Tutor', 'Tutor, English & Malay', 5, 'No cold DMs, no lowball rate negotiations — I set my range and get matched to families who are actually fine with it.', true)
+) as seed(author_name, role, context, rating, review_text, approved)
+where not exists (select 1 from reviews);

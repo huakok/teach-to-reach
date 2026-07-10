@@ -410,6 +410,18 @@ footer{ background:var(--teal-deep-2); color:var(--sand); padding:64px 0 28px; }
 }
 .chip-select input:checked + label{ background:var(--jade); border-color:var(--jade); color:#fff; }
 
+/* ---------- Star rating input (review form) ---------- */
+.star-input{ display:flex; flex-direction:row-reverse; justify-content:flex-end; gap:6px; }
+.star-input input{ display:none; }
+.star-input label{
+  font-size:2.1rem; line-height:1; color:var(--line); cursor:pointer;
+  transition:color .15s ease, transform .15s ease;
+}
+.star-input label:hover{ transform:scale(1.08); }
+.star-input input:checked ~ label,
+.star-input label:hover,
+.star-input label:hover ~ label{ color:var(--marigold); }
+
 .form-nav{ display:flex; justify-content:space-between; margin-top:32px; }
 .form-error{ color:#B3261E; font-size:0.85rem; margin-top:16px; }
 
