@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://teach-to-reach.netlify.app/sitemap.xml
