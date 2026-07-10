@@ -173,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initHeroEntrance();
   initReviewForm();
   loadApprovedReviews();
+  loadAllReviews();
 });
 
 // ---------- Star rating input: keep the hidden number input in sync ----------
@@ -276,6 +277,54 @@ async function loadApprovedReviews() {
         <div class="stars">${stars}</div>
         <p>&ldquo;${escapeHtml(r.review_text)}&rdquo;</p>
         <div class="who"><span class="avatar">${escapeHtml(initials)}</span> ${escapeHtml(r.author_name)} · ${escapeHtml(r.context)}</div>
+      </div>`;
+  }).join('');
+}
+
+// ---------- Full reviews wall (reviews.html) — text + optional screenshot ----------
+async function loadAllReviews() {
+  const container = document.querySelector('.all-reviews-grid');
+  if (!container) return;
+
+  let reviews;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/reviews?select=author_name,role,context,rating,review_text,screenshot_url&approved=eq.true&order=created_at.desc`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+    reviews = await res.json();
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<p style="color:var(--ink-soft);">Couldn\'t load reviews right now — please refresh.</p>';
+    return;
+  }
+
+  if (!reviews || !reviews.length) {
+    container.innerHTML = '<p style="color:var(--ink-soft);">No reviews yet — be the first to leave one!</p>';
+    return;
+  }
+
+  container.innerHTML = reviews.map((r) => {
+    const rating = Math.max(0, Math.min(5, Number(r.rating) || 0));
+    const stars = rating ? '★'.repeat(rating) + '☆'.repeat(5 - rating) : '';
+    const initials = (r.author_name || '?')
+      .split(' ')
+      .map((w) => w[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+    const photo = r.screenshot_url
+      ? `<a href="${escapeHtml(r.screenshot_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(r.screenshot_url)}" alt="Review screenshot from ${escapeHtml(r.context || 'a review')}" class="testi-screenshot" loading="lazy"></a>`
+      : '';
+    const text = r.review_text ? `<p>&ldquo;${escapeHtml(r.review_text)}&rdquo;</p>` : '';
+    return `
+      <div class="testi">
+        ${stars ? `<div class="stars">${stars}</div>` : ''}
+        ${photo}
+        ${text}
+        <div class="who"><span class="avatar">${escapeHtml(initials)}</span> ${escapeHtml(r.author_name)}${r.context ? ` · ${escapeHtml(r.context)}` : ''}</div>
       </div>`;
   }).join('');
 }

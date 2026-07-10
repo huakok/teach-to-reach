@@ -179,6 +179,19 @@ select * from (values
 ) as seed(author_name, role, context, rating, review_text, approved)
 where not exists (select 1 from reviews);
 
+-- Optional screenshot attached to a review (e.g. a chat screenshot Grace
+-- wants to show alongside or instead of typed review text).
+alter table reviews add column if not exists screenshot_url text;
+
+-- Public bucket Grace can drag-and-drop into directly from her own
+-- Supabase dashboard (Storage section) — no separate upload page needed.
+-- Files uploaded there get a public URL she can paste into a review row's
+-- screenshot_url column in the Table Editor, same place she already
+-- approves reviews.
+insert into storage.buckets (id, name, public)
+values ('review-screenshots', 'review-screenshots', true)
+on conflict (id) do nothing;
+
 -- ==========================================================================
 -- Telegram bot: assignment matching
 --

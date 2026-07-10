@@ -340,7 +340,14 @@ table.rates td span.note{ display:block; font-size:0.75rem; color:var(--ink-soft
 .testi .stars{ color:var(--marigold); letter-spacing:2px; font-size:0.9rem; }
 .testi p{ font-size:0.95rem; color:var(--ink-soft); font-style:italic; }
 .testi .who{ font-family:var(--font-mono); font-size:0.78rem; color:var(--ink); }
+.testi-screenshot{
+  width:100%; border-radius:var(--radius-s); border:1px solid var(--line);
+  cursor:pointer; transition:opacity .15s ease;
+}
+.testi-screenshot:hover{ opacity:0.88; }
 @media (max-width:880px){ .testi-grid{ grid-template-columns:1fr; } }
+.all-reviews-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+@media (max-width:880px){ .all-reviews-grid{ grid-template-columns:1fr; } }
 
 /* ---------- FAQ ---------- */
 .faq-item{ border-bottom:1px solid var(--line); }
