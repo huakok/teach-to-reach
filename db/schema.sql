@@ -178,3 +178,83 @@ select * from (values
   ('Priya', 'Tutor', 'Tutor, English & Malay', 5, 'No cold DMs, no lowball rate negotiations — I set my range and get matched to families who are actually fine with it.', true)
 ) as seed(author_name, role, context, rating, review_text, approved)
 where not exists (select 1 from reviews);
+
+-- ==========================================================================
+-- Telegram bot: assignment matching
+--
+-- Grace/the user create assignments by inserting a row into `assignments`
+-- via the Supabase Table Editor (same manual-curation pattern as approving
+-- reviews). A Database Webhook on INSERT calls
+-- netlify/functions/post-assignment.js, which posts it to the Telegram
+-- channel with an "Apply" button and writes telegram_message_id back.
+--
+-- `assignments`, `applications`, and `bot_sessions` all have RLS enabled
+-- with ZERO policies — unlike every other table above, there is no anon
+-- insert-only policy here. Only the Supabase service-role key (used
+-- server-side by the bot's Netlify Functions, never exposed to the
+-- browser) can read or write these three tables. The public site and the
+-- public anon key have no access to them at all.
+-- ==========================================================================
+
+-- Extend tutor_profiles so the bot's richer registration (age, gender,
+-- qualifications, etc.) writes into the same pool the website's
+-- "Become a tutor" form already uses, rather than a separate table.
+alter table tutor_profiles add column if not exists telegram_user_id bigint;
+alter table tutor_profiles add column if not exists age text;
+alter table tutor_profiles add column if not exists gender text;
+alter table tutor_profiles add column if not exists qualifications text;
+alter table tutor_profiles add column if not exists current_education text;
+alter table tutor_profiles add column if not exists tutoring_experience text;
+alter table tutor_profiles add column if not exists teaching_style text;
+alter table tutor_profiles add column if not exists track_record text;
+alter table tutor_profiles add column if not exists can_present_certificates text;
+alter table tutor_profiles add column if not exists profile_complete boolean not null default false;
+
+-- Lets the bot upsert by telegram_user_id (on conflict ... do update) so
+-- resuming a saved-but-incomplete registration updates the same row
+-- instead of creating a duplicate. Multiple NULLs (website-only profiles
+-- with no bot registration) are still allowed — Postgres unique indexes
+-- never treat NULL as equal to another NULL.
+create unique index if not exists tutor_profiles_telegram_user_id_key
+  on tutor_profiles (telegram_user_id);
+
+create table if not exists assignments (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  student_level text,
+  subjects text[],
+  location text,
+  rate_min text,
+  rate_max text,
+  frequency text,
+  notes text,
+  status text not null default 'open',        -- 'open' / 'filled' / 'cancelled'
+  telegram_message_id bigint,
+  channel_post_error text
+);
+
+alter table assignments enable row level security;
+
+create table if not exists applications (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  assignment_id uuid references assignments(id) on delete cascade,
+  tutor_telegram_id bigint,
+  tutor_profile_id uuid references tutor_profiles(id) on delete set null,
+  status text not null default 'applied'      -- 'applied' / 'shortlisted' / 'not_selected'
+);
+
+alter table applications enable row level security;
+
+-- The bot's own conversation-state memory (current step in the
+-- registration wizard, draft answers, which assignment is being viewed).
+-- Telegram webhooks are stateless per-request, so this table is what makes
+-- multi-step flows and "resume where you left off" possible.
+create table if not exists bot_sessions (
+  telegram_user_id bigint primary key,
+  state text not null default 'idle',
+  context jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table bot_sessions enable row level security;
