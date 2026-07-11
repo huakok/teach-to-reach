@@ -1,0 +1,26 @@
+# Supabase's free tier auto-pauses a project after 7 days with zero API
+# activity — and a paused project fails silently (forms stop submitting,
+# reviews.html shows nothing, the Telegram bot goes completely unresponsive
+# with no error message to the user). This workflow just reads one row from
+# the public "reviews" endpoint twice a week, which counts as activity and
+# resets the 7-day clock — cheap insurance against that failure mode without
+# needing the Supabase Pro plan.
+#
+# The anon key below is the same public, insert-only-scoped key already
+# committed in js/main.js — it's meant to be public, so it's fine here too.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '0 3 * * 1,4' # Mondays & Thursdays, 03:00 UTC — comfortably under the 7-day pause window
+  workflow_dispatch: {} # lets you trigger a run manually from the Actions tab to test it
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          curl -sf "https://iyfkunwywlqfgtyqouqp.supabase.co/rest/v1/reviews?select=id&limit=1" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Zmt1bnd5d2xxZmd0eXFvdXFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MjM3MjksImV4cCI6MjA5OTA5OTcyOX0.MZi1hwb4G2xPo16tUBaCtd5EXbNwGE8nGG1v6mR3AC4" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Zmt1bnd5d2xxZmd0eXFvdXFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MjM3MjksImV4cCI6MjA5OTA5OTcyOX0.MZi1hwb4G2xPo16tUBaCtd5EXbNwGE8nGG1v6mR3AC4"
