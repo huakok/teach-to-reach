@@ -1,13 +1,22 @@
 // TeachToReach — new-submission email notifier.
 // Called by a Supabase Database Webhook whenever a row is inserted into
-// tutor_requests or tutor_profiles, so Grace (or whoever NOTIFY_EMAIL is
-// set to) doesn't have to remember to check the Supabase table manually.
+// tutor_requests, tutor_profiles, or applications, so Grace (or whoever
+// NOTIFY_EMAIL is set to) doesn't have to remember to check the Supabase
+// table manually.
 //
 // Required environment variables (set in Netlify site settings):
-//   RESEND_API_KEY   - API key from resend.com
-//   NOTIFY_EMAIL     - where the notification email gets sent
-//   WEBHOOK_SECRET   - shared secret checked against the x-webhook-secret header
-//   NOTIFY_FROM      - optional, defaults to Resend's sandbox sender
+//   RESEND_API_KEY              - API key from resend.com
+//   NOTIFY_EMAIL                - where the notification email gets sent
+//   WEBHOOK_SECRET              - shared secret checked against the
+//                                 x-webhook-secret header
+//   NOTIFY_FROM                 - optional, defaults to Resend's sandbox sender
+//   SUPABASE_URL                - same project as the rest of the site —
+//   SUPABASE_SERVICE_ROLE_KEY     needed for the `applications` case only,
+//                                 to look up the assignment/tutor an
+//                                 application row points to (the webhook
+//                                 payload only carries raw IDs, not the
+//                                 joined details). Already set for the bot,
+//                                 no new secret to add.
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -75,6 +84,31 @@ exports.handler = async (event) => {
         <b>Telegram:</b> ${escapeHtml(record.telegram_handle) || '-'}<br>
         <b>Notes:</b> ${escapeHtml(record.tutor_notes) || '-'}
       </p>`;
+  } else if (table === 'applications') {
+    const [assignment, tutor] = await Promise.all([
+      fetchSupabaseRow('assignments', record.assignment_id),
+      fetchSupabaseRow('tutor_profiles', record.tutor_profile_id),
+    ]);
+    subject = `New application — ${tutor?.tutor_name || 'a tutor'} → ${assignment?.student_level || 'an assignment'}`;
+    html = `
+      <h2>New assignment application</h2>
+      <p>
+        <b>Assignment:</b> ${escapeHtml(assignment?.student_level) || '-'} ·
+        ${(assignment?.subjects || []).join(', ') || '-'} ·
+        ${escapeHtml(assignment?.location) || '-'} ·
+        $${escapeHtml(assignment?.rate_min) || '?'}–${escapeHtml(assignment?.rate_max) || '?'}/hr
+      </p>
+      <p>
+        <b>Tutor:</b> ${escapeHtml(tutor?.tutor_name) || '-'}<br>
+        <b>Phone:</b> ${escapeHtml(tutor?.tutor_phone) || '-'}<br>
+        <b>Telegram:</b> ${escapeHtml(tutor?.telegram_handle) || '-'}<br>
+        <b>Tier:</b> ${escapeHtml(tutor?.tutor_tier) || '-'}<br>
+        <b>Subjects:</b> ${(tutor?.subjects || []).join(', ') || '-'}<br>
+        <b>Levels:</b> ${(tutor?.levels || []).join(', ') || '-'}<br>
+        <b>Rate:</b> $${escapeHtml(tutor?.rate_min) || '?'}–${escapeHtml(tutor?.rate_max) || '?'}/hr<br>
+        <b>Qualifications:</b> ${escapeHtml(tutor?.qualifications) || '-'}
+      </p>
+      <p>Review in the Supabase Table Editor (<code>applications</code>) to shortlist, then send the tutor's details to the parent for their approval before connecting the two directly.</p>`;
   } else {
     return { statusCode: 400, body: `Unknown table: ${table}` };
   }
@@ -101,6 +135,19 @@ exports.handler = async (event) => {
 
   return { statusCode: 200, body: 'OK' };
 };
+
+async function fetchSupabaseRow(table, id) {
+  if (!id) return null;
+  const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/${table}?id=eq.${id}&select=*`, {
+    headers: {
+      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+  });
+  if (!res.ok) return null;
+  const rows = await res.json();
+  return rows && rows.length ? rows[0] : null;
+}
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
