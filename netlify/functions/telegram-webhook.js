@@ -161,6 +161,59 @@ const STEPS = [
   },
 ];
 
+// Parent/student "request a tutor" wizard — mirrors request-tutor.html's
+// fields and choice values exactly (same tutor_requests columns, same
+// dropdown text) so a request made via the bot is indistinguishable from
+// one made on the website once it lands in Grace's inbox.
+const REQUEST_STEPS = [
+  { key: 'parent_name', label: 'Your name', type: 'text', prompt: "👋 What's your name?" },
+  { key: 'parent_phone', label: 'Phone number', type: 'text', prompt: "📱 What's the best phone number to reach you on?" },
+  { key: 'parent_email', label: 'Email', type: 'text', allowNotApplicable: true, prompt: "📧 What's your email? (optional — tap Not applicable to skip)" },
+  {
+    key: 'student_level', label: 'Student level', type: 'choice', prompt: '🎓 What level is your child in?',
+    choices: [
+      ['Preschool / Kindergarten', 'Preschool / Kindergarten'],
+      ['Primary 1–3', 'Primary 1–3'],
+      ['Primary 4–6 (PSLE)', 'Primary 4–6 (PSLE)'],
+      ['Secondary 1–2', 'Secondary 1–2'],
+      ['Secondary 3–4 (O-Level)', 'Secondary 3–4 (O-Level)'],
+      ['JC 1–2 (A-Level)', 'JC 1–2 (A-Level)'],
+      ['IB / IP', 'IB / IP'],
+      ['Polytechnic', 'Polytechnic'],
+    ],
+  },
+  { key: 'school_type', label: 'School type', type: 'text', allowNotApplicable: true, prompt: '🏫 What type of school? (optional — e.g. "Neighbourhood school", "IP school")' },
+  {
+    key: 'subjects', label: 'Subjects needed', type: 'multi-choice',
+    prompt: '📚 Which subject(s) do you need help with? (tap all that apply, then Continue)',
+    choices: [
+      ['Mathematics', 'Mathematics'], ['Science', 'Science'], ['English', 'English'], ['Chinese', 'Chinese'],
+      ['Physics', 'Physics'], ['Chemistry', 'Chemistry'], ['Economics', 'Economics'], ['Other', 'Other'],
+    ],
+  },
+  {
+    key: 'frequency', label: 'Lessons per week', type: 'choice', prompt: '🗓️ How many lessons per week?',
+    choices: [['1x/week', '1x/week'], ['2x/week', '2x/week'], ['3x/week or more', '3x/week or more'], ['Ad-hoc / exam prep only', 'Ad-hoc / exam prep only']],
+  },
+  {
+    key: 'budget', label: 'Budget', type: 'choice', prompt: "💰 What's your budget per hour?",
+    choices: [['Under $30', 'Under $30'], ['$30–50', '$30–50'], ['$50–80', '$50–80'], ['$80–120', '$80–120'], ['$120+', '$120+']],
+  },
+  { key: 'location', label: 'Area', type: 'text', prompt: '📍 Which area / neighbourhood are you in? (e.g. "Punggol, Tampines")' },
+  {
+    key: 'mode', label: 'Lesson mode', type: 'choice', prompt: '💻 Where would lessons happen?',
+    choices: [["At student's home", "At student's home"], ['Online', 'Online'], ['Either works', 'Either works']],
+  },
+  { key: 'concerns', label: 'Anything else', type: 'text', maxLen: 500, allowNotApplicable: true, prompt: '✏️ Any specific concerns Grace should know? (optional — e.g. "needs help staying focused")' },
+];
+
+function stepsFor(flow) {
+  return flow === 'request' ? REQUEST_STEPS : STEPS;
+}
+function prefixFor(flow) {
+  return flow === 'request' ? 'requesting_' : 'registering_';
+}
+
 // ---------- Telegram API helpers ----------
 async function tg(method, body) {
   const res = await fetch(`${TELEGRAM_API}/${method}`, {
@@ -308,8 +361,8 @@ async function createApplication(assignmentId, telegramUserId, tutorProfileId) {
 }
 
 // ---------- Small formatting helpers ----------
-function labelFor(stepKey, value) {
-  const step = STEPS.find((s) => s.key === stepKey);
+function labelFor(stepKey, value, steps = STEPS) {
+  const step = steps.find((s) => s.key === stepKey);
   if (!step) return value;
   if (step.type === 'multi-choice') {
     const values = Array.isArray(value) ? value : [];
@@ -392,7 +445,8 @@ function navRow(stepIndex) {
 }
 
 async function sendStepPrompt(chatId, stepIndex, selectedValues, opts = {}) {
-  const step = STEPS[stepIndex];
+  const steps = stepsFor(opts.flow);
+  const step = steps[stepIndex];
   const keyboard = [];
   if (step.type === 'choice') {
     step.choices.forEach(([label, value]) => {
@@ -412,7 +466,7 @@ async function sendStepPrompt(chatId, stepIndex, selectedValues, opts = {}) {
   }
   keyboard.push(opts.isEdit ? [{ text: '🚫 Cancel', callback_data: 'nav:cancel' }] : navRow(stepIndex));
 
-  let promptText = `Step ${stepIndex + 1} of ${STEPS.length}\n\n${step.prompt}`;
+  let promptText = `Step ${stepIndex + 1} of ${steps.length}\n\n${step.prompt}`;
   if (opts.isEdit) {
     promptText = step.type === 'text' && selectedValues ? `Current: ${selectedValues}\n\n${step.prompt}` : step.prompt;
   }
@@ -420,12 +474,95 @@ async function sendStepPrompt(chatId, stepIndex, selectedValues, opts = {}) {
   return res?.result?.message_id;
 }
 
-function formatConfirmScreen(draft) {
-  const lines = STEPS.map((s) => `🔸 *${s.label}*: ${s.type === 'text' ? draft[s.key] : labelFor(s.key, draft[s.key])}`);
-  return `👀 Let's double check — is this profile correct?\n\n${lines.join('\n')}`;
+function formatConfirmScreen(draft, flow = 'register') {
+  const steps = stepsFor(flow);
+  const heading = flow === 'request' ? "double check — is this request correct?" : 'double check — is this profile correct?';
+  const lines = steps.map((s) => `🔸 *${s.label}*: ${s.type === 'text' ? (draft[s.key] || '-') : labelFor(s.key, draft[s.key], steps)}`);
+  return `👀 Let's ${heading}\n\n${lines.join('\n')}`;
+}
+
+// Mirrors js/main.js's client-side matching helpers so a bot-submitted
+// request gets the same instant anonymized teaser the website shows.
+function mapBudgetToRange(budget) {
+  switch (budget) {
+    case 'Under $30': return { min: 0, max: 30 };
+    case '$30–50': return { min: 30, max: 50 };
+    case '$50–80': return { min: 50, max: 80 };
+    case '$80–120': return { min: 80, max: 120 };
+    case '$120+': return { min: 120, max: 9999 };
+    default: return { min: 0, max: 9999 };
+  }
+}
+function mapLevelToBucket(level) {
+  if (!level) return null;
+  if (level.startsWith('Preschool')) return 'Preschool';
+  if (level.startsWith('Primary')) return 'Primary';
+  if (level.startsWith('Secondary')) return 'Secondary';
+  if (level.startsWith('JC')) return 'JC/A-Level';
+  if (level.startsWith('IB')) return 'IB/IP';
+  if (level.startsWith('Polytechnic')) return 'Polytechnic';
+  return null;
+}
+function expandSubjectsForMatching(subjects) {
+  const expanded = new Set();
+  (subjects || []).forEach((s) => {
+    if (s === 'Science') ['Physics', 'Chemistry', 'Biology'].forEach((sub) => expanded.add(sub));
+    else expanded.add(s);
+  });
+  return Array.from(expanded);
+}
+async function fetchTutorMatchTeaser(draft) {
+  const budgetRange = mapBudgetToRange(draft.budget);
+  const rows = await sb('rpc/match_tutors', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_subjects: expandSubjectsForMatching(draft.subjects),
+      p_level_bucket: mapLevelToBucket(draft.student_level),
+      p_location: draft.location || null,
+      p_budget_min: budgetRange.min,
+      p_budget_max: budgetRange.max,
+    }),
+  });
+  return rows || [];
+}
+function formatMatchTeaserMessage(rows) {
+  if (!rows.length) {
+    return '📭 No exact match in the pool yet — Grace will personally source one for you within 24–48 hours.';
+  }
+  const cards = rows.map((r) => {
+    const rate = r.rate_min && r.rate_max ? `$${r.rate_min}–${r.rate_max}/hr` : '';
+    const subjectsLabel = (r.subjects || []).slice(0, 3).join(', ');
+    return `• *${r.tutor_tier || 'Tutor'}* — ${[rate, r.tutor_location, r.tutor_avail].filter(Boolean).join(' · ')}\n  Teaches ${subjectsLabel} (${r.score}% fit)`;
+  });
+  return (
+    `🎉 ${rows.length} tutor${rows.length > 1 ? 's' : ''} in the pool already look like a good fit:\n\n${cards.join('\n\n')}\n\n` +
+    `Grace will confirm details and personally introduce you to the best fit within 24–48 hours.`
+  );
+}
+
+async function insertTutorRequest(draft) {
+  const clean = (v) => (v === 'Not applicable' ? null : v);
+  await sb('tutor_requests', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      parent_name: draft.parent_name,
+      parent_phone: draft.parent_phone,
+      parent_email: clean(draft.parent_email),
+      student_level: draft.student_level,
+      school_type: clean(draft.school_type),
+      concerns: clean(draft.concerns),
+      subjects: draft.subjects || [],
+      frequency: draft.frequency,
+      budget: draft.budget,
+      location: draft.location,
+      mode: draft.mode,
+    }),
+  });
 }
 
 const GREETING_KEYBOARD = [
+  [{ text: '🎓 Request a tutor for my child', callback_data: 'menu:request_tutor' }],
   [{ text: 'View available assignments', callback_data: 'menu:assignments' }],
   [{ text: 'View applications', callback_data: 'menu:applications' }],
   [{ text: '✏️ Edit my profile', callback_data: 'menu:edit_profile' }],
@@ -467,22 +604,24 @@ async function sendGoodbye(chatId) {
 }
 
 // ---------- Registration flow helpers (shared by advance/back navigation) ----------
-async function goToStep(telegramUserId, chatId, context, draft, index) {
-  const step = STEPS[index];
+async function goToStep(telegramUserId, chatId, context, draft, index, flow = 'register') {
+  const steps = stepsFor(flow);
+  const step = steps[index];
   const multiSelect = step.type === 'multi-choice' ? (draft[step.key] || []) : undefined;
-  await saveSession(telegramUserId, `registering_${index}`, { ...context, draft, multiSelect });
-  await sendStepPrompt(chatId, index, multiSelect);
+  await saveSession(telegramUserId, `${prefixFor(flow)}${index}`, { ...context, draft, multiSelect, flow });
+  await sendStepPrompt(chatId, index, multiSelect, { flow });
 }
 
-async function advanceOrConfirm(telegramUserId, chatId, context, draft, nextIndex) {
-  if (nextIndex >= STEPS.length) {
-    await saveSession(telegramUserId, 'registering_confirm', { ...context, draft, multiSelect: undefined });
-    await sendMessage(chatId, formatConfirmScreen(draft), [
+async function advanceOrConfirm(telegramUserId, chatId, context, draft, nextIndex, flow = 'register') {
+  const steps = stepsFor(flow);
+  if (nextIndex >= steps.length) {
+    await saveSession(telegramUserId, `${prefixFor(flow)}confirm`, { ...context, draft, multiSelect: undefined, flow });
+    await sendMessage(chatId, formatConfirmScreen(draft, flow), [
       [{ text: '✅ Confirm', callback_data: 'nav:confirm' }, { text: '🔄 Start over', callback_data: 'nav:cancel' }],
     ]);
     return;
   }
-  await goToStep(telegramUserId, chatId, context, draft, nextIndex);
+  await goToStep(telegramUserId, chatId, context, draft, nextIndex, flow);
 }
 
 // ---------- Main state machine ----------
@@ -498,18 +637,24 @@ async function handleStart(session, chatId, telegramUserId, firstName, payload) 
     return;
   }
 
-  // Resume a saved-but-incomplete registration — register.md's first line
-  // is explicit that /start should bring the user back to their last saved
-  // response, not discard it.
-  if (session.state.startsWith('registering_') && session.state !== 'registering_confirm') {
+  // Resume a saved-but-incomplete registration/request — register.md's first
+  // line is explicit that /start should bring the user back to their last
+  // saved response, not discard it. Applies to both wizards.
+  if (
+    (session.state.startsWith('registering_') || session.state.startsWith('requesting_')) &&
+    session.state !== 'registering_confirm' &&
+    session.state !== 'requesting_confirm'
+  ) {
+    const flow = session.context.flow || (session.state.startsWith('requesting_') ? 'request' : 'register');
     const stepIndex = Number(session.state.split('_')[1]);
     await sendMessage(chatId, "Welcome back — let's continue where you left off. 🙂");
-    await sendStepPrompt(chatId, stepIndex, session.context.multiSelect);
+    await sendStepPrompt(chatId, stepIndex, session.context.multiSelect, { flow });
     return;
   }
-  if (session.state === 'registering_confirm') {
-    await sendMessage(chatId, "Welcome back — here's your saved profile so far.");
-    await sendMessage(chatId, formatConfirmScreen(session.context.draft || {}), [
+  if (session.state === 'registering_confirm' || session.state === 'requesting_confirm') {
+    const flow = session.state === 'requesting_confirm' ? 'request' : 'register';
+    await sendMessage(chatId, flow === 'request' ? "Welcome back — here's your saved request so far." : "Welcome back — here's your saved profile so far.");
+    await sendMessage(chatId, formatConfirmScreen(session.context.draft || {}, flow), [
       [{ text: '✅ Confirm', callback_data: 'nav:confirm' }, { text: '🔄 Start over', callback_data: 'nav:cancel' }],
     ]);
     return;
@@ -546,6 +691,10 @@ async function showAssignmentAndMaybeRegister(chatId, telegramUserId, assignment
 }
 
 async function handleMenu(chatId, telegramUserId, action) {
+  if (action === 'request_tutor') {
+    await startRequest(chatId, telegramUserId);
+    return;
+  }
   if (action === 'assignments') {
     const assignments = await getOpenAssignments();
     if (!assignments.length) {
@@ -595,14 +744,20 @@ async function handleMenu(chatId, telegramUserId, action) {
 }
 
 async function startRegistration(chatId, telegramUserId, assignmentId, username) {
-  await saveSession(telegramUserId, 'registering_0', { assignmentId: assignmentId || null, draft: {}, username: username || null });
-  await sendStepPrompt(chatId, 0);
+  await saveSession(telegramUserId, 'registering_0', { assignmentId: assignmentId || null, draft: {}, username: username || null, flow: 'register' });
+  await sendStepPrompt(chatId, 0, undefined, { flow: 'register' });
 }
 
-async function handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex, isEdit) {
-  const step = STEPS[stepIndex];
+async function startRequest(chatId, telegramUserId) {
+  await saveSession(telegramUserId, 'requesting_0', { draft: {}, flow: 'request' });
+  await sendStepPrompt(chatId, 0, undefined, { flow: 'request' });
+}
+
+async function handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex, isEdit, flow = 'register') {
+  const steps = stepsFor(flow);
+  const step = steps[stepIndex];
   const draft = { ...(session.context.draft || {}) };
-  const statePrefix = isEdit ? 'editing_' : 'registering_';
+  const statePrefix = isEdit ? 'editing_' : prefixFor(flow);
 
   if (input.kind === 'callback' && (input.data === 'nav:back' || input.data === 'nav:cancel')) {
     if (isEdit) {
@@ -611,11 +766,11 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
       return;
     }
     if (input.data === 'nav:back') {
-      await goToStep(telegramUserId, chatId, session.context, draft, Math.max(0, stepIndex - 1));
+      await goToStep(telegramUserId, chatId, session.context, draft, Math.max(0, stepIndex - 1), flow);
       return;
     }
     await saveSession(telegramUserId, 'idle', {});
-    await sendMessage(chatId, 'Registration cancelled — no changes were saved.');
+    await sendMessage(chatId, 'Cancelled — no changes were saved.');
     await sendGreeting(chatId);
     return;
   }
@@ -624,7 +779,7 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
       await sendEditMenu(telegramUserId, chatId);
       return;
     }
-    await saveSession(telegramUserId, `registering_${stepIndex}`, { ...session.context, draft });
+    await saveSession(telegramUserId, `${prefixFor(flow)}${stepIndex}`, { ...session.context, draft, flow });
     await sendGoodbye(chatId);
     return;
   }
@@ -665,7 +820,7 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
         await applyFieldEdit(telegramUserId, chatId, step, current);
         return;
       }
-      await advanceOrConfirm(telegramUserId, chatId, session.context, draft, stepIndex + 1);
+      await advanceOrConfirm(telegramUserId, chatId, session.context, draft, stepIndex + 1, flow);
       return;
     }
 
@@ -698,10 +853,10 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
     await applyFieldEdit(telegramUserId, chatId, step, value);
     return;
   }
-  await advanceOrConfirm(telegramUserId, chatId, session.context, draft, stepIndex + 1);
+  await advanceOrConfirm(telegramUserId, chatId, session.context, draft, stepIndex + 1, flow);
 }
 
-async function handleConfirm(session, chatId, telegramUserId, input) {
+async function handleConfirm(session, chatId, telegramUserId, input, flow = 'register') {
   if (input.kind === 'callback' && input.data === 'nav:cancel') {
     await saveSession(telegramUserId, 'idle', {});
     await sendMessage(chatId, 'No problem — starting over. Type /start when ready.');
@@ -709,6 +864,20 @@ async function handleConfirm(session, chatId, telegramUserId, input) {
   }
   if (input.kind === 'callback' && input.data === 'nav:confirm') {
     const draft = session.context.draft || {};
+
+    if (flow === 'request') {
+      await insertTutorRequest(draft);
+      await saveSession(telegramUserId, 'idle', {});
+      await sendMessage(chatId, "🎉 Got it — Grace will personally review this and be in touch soon!");
+      try {
+        const matches = await fetchTutorMatchTeaser(draft);
+        await sendMessage(chatId, formatMatchTeaserMessage(matches));
+      } catch (err) {
+        console.error('match teaser failed:', err);
+      }
+      return;
+    }
+
     const username = session.context.username;
     await upsertTutorProfile(telegramUserId, draft, username);
     const profile = await getTutorProfileByTelegramId(telegramUserId);
@@ -753,12 +922,23 @@ async function handleInput(session, chatId, telegramUserId, input) {
 
   if (state.startsWith('registering_') && state !== 'registering_confirm') {
     const stepIndex = Number(state.split('_')[1]);
-    await handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex, false);
+    await handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex, false, 'register');
     return;
   }
 
   if (state === 'registering_confirm') {
-    await handleConfirm(session, chatId, telegramUserId, input);
+    await handleConfirm(session, chatId, telegramUserId, input, 'register');
+    return;
+  }
+
+  if (state.startsWith('requesting_') && state !== 'requesting_confirm') {
+    const stepIndex = Number(state.split('_')[1]);
+    await handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex, false, 'request');
+    return;
+  }
+
+  if (state === 'requesting_confirm') {
+    await handleConfirm(session, chatId, telegramUserId, input, 'request');
     return;
   }
 
@@ -859,11 +1039,13 @@ exports.handler = async (event) => {
 
 module.exports.__testables = {
   STEPS,
+  REQUEST_STEPS,
   hexToUuid,
   labelFor,
   formatAssignment,
   formatAssignmentSummary,
   formatConfirmScreen,
+  formatMatchTeaserMessage,
   navRow,
   columnForStep,
   valueForStoredField,
