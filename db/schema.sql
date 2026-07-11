@@ -248,6 +248,17 @@ create table if not exists assignments (
 
 alter table assignments enable row level security;
 
+-- Lets assignments.html show real open listings instead of the old static
+-- demo cards. Scoped to open rows only — filled/cancelled assignments and
+-- the internal telegram_message_id/channel_post_error bookkeeping columns
+-- stay invisible (the client only ever requests a safe column subset, same
+-- pattern as the reviews table).
+drop policy if exists "Public can read open assignments" on assignments;
+create policy "Public can read open assignments"
+  on assignments for select
+  to anon
+  using (status = 'open');
+
 create table if not exists applications (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),

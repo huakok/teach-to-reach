@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initMultiStepForm('request-form', 'tutor_requests', showTutorMatchTeaser);
   initMultiStepForm('tutor-form', 'tutor_profiles');
-  initAssignmentFilters();
+  loadOpenAssignments();
   initNavScrollShadow();
   initScrollReveal();
   initHeroEntrance();
@@ -480,22 +480,72 @@ function initMultiStepForm(formId, table, onSuccess) {
 }
 
 // ---------- Assignment board filters (demo/static data already in HTML) ----------
-function initAssignmentFilters() {
-  const levelSel = document.getElementById('filter-level');
-  const subjectSel = document.getElementById('filter-subject');
-  const cards = Array.from(document.querySelectorAll('.assignment-card'));
-  if (!levelSel || !subjectSel || cards.length === 0) return;
+// ---------- Live assignment board (assignments.html) ----------
+function timeAgo(dateStr) {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
 
-  function apply() {
-    const level = levelSel.value;
-    const subject = subjectSel.value;
-    cards.forEach((card) => {
-      const matchesLevel = level === 'all' || card.dataset.level === level;
-      const matchesSubject = subject === 'all' || card.dataset.subject === subject;
-      card.style.display = matchesLevel && matchesSubject ? 'flex' : 'none';
-    });
+function renderAssignmentCards(container, list) {
+  if (!list.length) {
+    container.innerHTML = '<p style="color:var(--ink-soft);">📭 No open assignments right now — check back soon!</p>';
+    return;
+  }
+  container.innerHTML = list.map((a) => {
+    const subjects = a.subjects || [];
+    const rate = `$${a.rate_min || '?'}–${a.rate_max || '?'}/hr`;
+    return `
+      <div class="assignment-card">
+        <div class="body">
+          <h4>${escapeHtml(a.student_level || 'Level TBC')}</h4>
+          <div class="tags">
+            ${subjects.map((s) => `<span class="tag">${escapeHtml(s)}</span>`).join('')}
+            ${a.location ? `<span class="tag">${escapeHtml(a.location)}</span>` : ''}
+            ${a.frequency ? `<span class="tag">${escapeHtml(a.frequency)}</span>` : ''}
+          </div>
+          ${a.notes ? `<p style="font-size:0.88rem;color:var(--ink-soft);">${escapeHtml(a.notes)}</p>` : ''}
+          <div class="meta-row"><span>Posted ${timeAgo(a.created_at)}</span><span class="rate">${escapeHtml(rate)}</span></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Only a subject filter (not level) — student_level is freeform text Grace
+// types per-assignment (e.g. "Sec 4", "P6"), so it can't be reliably
+// bucketed for an exact-match filter without silently hiding real listings.
+// subjects is a structured array, so an includes() filter is safe.
+async function loadOpenAssignments() {
+  const container = document.querySelector('.assignment-grid');
+  if (!container) return;
+
+  let assignments;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/assignments?select=student_level,subjects,location,rate_min,rate_max,frequency,notes,created_at&status=eq.open&order=created_at.desc`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+    assignments = await res.json();
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<p style="color:var(--ink-soft);">Couldn\'t load assignments right now — please refresh.</p>';
+    return;
   }
 
-  levelSel.addEventListener('change', apply);
-  subjectSel.addEventListener('change', apply);
+  renderAssignmentCards(container, assignments || []);
+
+  const subjectSel = document.getElementById('filter-subject');
+  if (subjectSel) {
+    subjectSel.addEventListener('change', () => {
+      const val = subjectSel.value;
+      const filtered = val === 'all' ? assignments : assignments.filter((a) => (a.subjects || []).includes(val));
+      renderAssignmentCards(container, filtered);
+    });
+  }
 }
