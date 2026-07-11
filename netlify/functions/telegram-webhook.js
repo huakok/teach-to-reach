@@ -340,6 +340,49 @@ function formatAssignment(a) {
   );
 }
 
+// One-line label for the assignment list menu — keeps the list scannable
+// instead of sending a separate full-detail message per assignment.
+function formatAssignmentSummary(a) {
+  const subjects = (a.subjects || []).slice(0, 2).join('/') || '?';
+  const more = (a.subjects || []).length > 2 ? '+' : '';
+  return `${a.student_level || '?'} · ${subjects}${more} · ${a.location || '?'} · $${a.rate_min || '?'}–${a.rate_max || '?'}/hr`;
+}
+
+// Most STEPS keys map 1:1 onto tutor_profiles columns; these two don't.
+const STEP_KEY_TO_COLUMN = { full_name: 'tutor_name', phone_number: 'tutor_phone' };
+function columnForStep(key) {
+  return STEP_KEY_TO_COLUMN[key] || key;
+}
+
+// upsertTutorProfile() stores gender as the raw choice value ('male') but
+// tutor_tier/can_present_certificates/tutor_avail as the display label
+// ('Full-time') — matched here so a single-field edit writes the same
+// format the original registration would have.
+const LABEL_STORED_CHOICE_KEYS = new Set(['tutor_tier', 'can_present_certificates', 'tutor_avail']);
+
+// Reverses a stored column value back into the raw choice value(s) STEPS
+// buttons are keyed by, so an edit prompt can pre-mark the tutor's current
+// answer regardless of which of the two storage formats above was used.
+function valueForStoredField(step, stored) {
+  if (stored == null) return stored;
+  if (step.type === 'multi-choice') {
+    const arr = Array.isArray(stored) ? stored : [];
+    return arr.map((v) => {
+      const byValue = step.choices.find(([, cv]) => String(cv).toLowerCase() === String(v).toLowerCase());
+      if (byValue) return byValue[1];
+      const byLabel = step.choices.find(([lbl]) => lbl.toLowerCase() === String(v).toLowerCase());
+      return byLabel ? byLabel[1] : v;
+    });
+  }
+  if (step.type === 'choice') {
+    const byValue = step.choices.find(([, cv]) => String(cv).toLowerCase() === String(stored).toLowerCase());
+    if (byValue) return byValue[1];
+    const byLabel = step.choices.find(([lbl]) => lbl.toLowerCase() === String(stored).toLowerCase());
+    return byLabel ? byLabel[1] : stored;
+  }
+  return stored;
+}
+
 function navRow(stepIndex) {
   const row = [];
   if (stepIndex > 0) row.push({ text: '⬅️ Back', callback_data: 'nav:back' });
@@ -348,11 +391,14 @@ function navRow(stepIndex) {
   return row;
 }
 
-async function sendStepPrompt(chatId, stepIndex, selectedValues) {
+async function sendStepPrompt(chatId, stepIndex, selectedValues, opts = {}) {
   const step = STEPS[stepIndex];
   const keyboard = [];
   if (step.type === 'choice') {
-    step.choices.forEach(([label, value]) => keyboard.push([{ text: label, callback_data: `ans:${value}` }]));
+    step.choices.forEach(([label, value]) => {
+      const mark = opts.isEdit && selectedValues === value ? '✅ ' : '';
+      keyboard.push([{ text: `${mark}${label}`, callback_data: `ans:${value}` }]);
+    });
   } else if (step.type === 'multi-choice') {
     const selected = selectedValues || [];
     step.choices.forEach(([label, value]) => {
@@ -364,8 +410,13 @@ async function sendStepPrompt(chatId, stepIndex, selectedValues) {
   if (step.allowNotApplicable) {
     keyboard.push([{ text: 'Not applicable', callback_data: 'ans:not_applicable' }]);
   }
-  keyboard.push(navRow(stepIndex));
-  const res = await sendMessage(chatId, `Step ${stepIndex + 1} of ${STEPS.length}\n\n${step.prompt}`, keyboard);
+  keyboard.push(opts.isEdit ? [{ text: '🚫 Cancel', callback_data: 'nav:cancel' }] : navRow(stepIndex));
+
+  let promptText = `Step ${stepIndex + 1} of ${STEPS.length}\n\n${step.prompt}`;
+  if (opts.isEdit) {
+    promptText = step.type === 'text' && selectedValues ? `Current: ${selectedValues}\n\n${step.prompt}` : step.prompt;
+  }
+  const res = await sendMessage(chatId, promptText, keyboard);
   return res?.result?.message_id;
 }
 
@@ -377,9 +428,29 @@ function formatConfirmScreen(draft) {
 const GREETING_KEYBOARD = [
   [{ text: 'View available assignments', callback_data: 'menu:assignments' }],
   [{ text: 'View applications', callback_data: 'menu:applications' }],
+  [{ text: '✏️ Edit my profile', callback_data: 'menu:edit_profile' }],
   [{ text: 'Contact admin', callback_data: 'menu:contact' }],
   [{ text: 'Exit', callback_data: 'menu:exit' }],
 ];
+
+async function sendEditMenu(telegramUserId, chatId) {
+  await saveSession(telegramUserId, 'editing_menu', {});
+  const keyboard = STEPS.map((step, idx) => [{ text: step.label, callback_data: `editfield:${idx}` }]);
+  keyboard.push([{ text: '✅ Done editing', callback_data: 'edit:done' }]);
+  await sendMessage(chatId, '✏️ What would you like to update?', keyboard);
+}
+
+async function applyFieldEdit(telegramUserId, chatId, step, rawValue) {
+  const column = columnForStep(step.key);
+  const dbValue = step.type === 'choice' && LABEL_STORED_CHOICE_KEYS.has(step.key) ? labelFor(step.key, rawValue) : rawValue;
+  await sb(`tutor_profiles?telegram_user_id=eq.${telegramUserId}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ [column]: dbValue }),
+  });
+  await sendMessage(chatId, `✅ ${step.label} updated!`);
+  await sendEditMenu(telegramUserId, chatId);
+}
 
 async function sendGreeting(chatId, firstName) {
   await sendMessage(
@@ -481,11 +552,23 @@ async function handleMenu(chatId, telegramUserId, action) {
       await sendMessage(chatId, '📭 No open assignments right now — check back soon!');
       return;
     }
-    for (const a of assignments) {
-      await sendMessage(chatId, formatAssignment(a), [
-        [{ text: '✍️ Apply', callback_data: `apply:${a.id.replace(/-/g, '')}` }],
-      ]);
+    const keyboard = assignments.map((a) => [
+      { text: formatAssignmentSummary(a), callback_data: `apply:${a.id.replace(/-/g, '')}` },
+    ]);
+    await sendMessage(
+      chatId,
+      `📋 ${assignments.length} open assignment${assignments.length > 1 ? 's' : ''} — tap one to view details & apply:`,
+      keyboard
+    );
+    return;
+  }
+  if (action === 'edit_profile') {
+    const profile = await getTutorProfileByTelegramId(telegramUserId);
+    if (!profile || !profile.profile_complete) {
+      await sendMessage(chatId, "📝 You don't have a completed profile yet — register first via an assignment (see 'View available assignments').");
+      return;
     }
+    await sendEditMenu(telegramUserId, chatId);
     return;
   }
   if (action === 'applications') {
@@ -516,21 +599,31 @@ async function startRegistration(chatId, telegramUserId, assignmentId, username)
   await sendStepPrompt(chatId, 0);
 }
 
-async function handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex) {
+async function handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex, isEdit) {
   const step = STEPS[stepIndex];
   const draft = { ...(session.context.draft || {}) };
+  const statePrefix = isEdit ? 'editing_' : 'registering_';
 
-  if (input.kind === 'callback' && input.data === 'nav:back') {
-    await goToStep(telegramUserId, chatId, session.context, draft, Math.max(0, stepIndex - 1));
-    return;
-  }
-  if (input.kind === 'callback' && input.data === 'nav:cancel') {
+  if (input.kind === 'callback' && (input.data === 'nav:back' || input.data === 'nav:cancel')) {
+    if (isEdit) {
+      await sendMessage(chatId, 'No changes made.');
+      await sendEditMenu(telegramUserId, chatId);
+      return;
+    }
+    if (input.data === 'nav:back') {
+      await goToStep(telegramUserId, chatId, session.context, draft, Math.max(0, stepIndex - 1));
+      return;
+    }
     await saveSession(telegramUserId, 'idle', {});
     await sendMessage(chatId, 'Registration cancelled — no changes were saved.');
     await sendGreeting(chatId);
     return;
   }
   if (input.kind === 'callback' && input.data === 'nav:save_exit') {
+    if (isEdit) {
+      await sendEditMenu(telegramUserId, chatId);
+      return;
+    }
     await saveSession(telegramUserId, `registering_${stepIndex}`, { ...session.context, draft });
     await sendGoodbye(chatId);
     return;
@@ -543,7 +636,7 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
     if (input.kind === 'callback' && input.data.startsWith('msel:')) {
       const val = input.data.slice('msel:'.length);
       const updated = current.includes(val) ? current.filter((v) => v !== val) : [...current, val];
-      await saveSession(telegramUserId, `registering_${stepIndex}`, { ...session.context, draft, multiSelect: updated });
+      await saveSession(telegramUserId, `${statePrefix}${stepIndex}`, { ...session.context, draft, multiSelect: updated });
 
       const keyboard = [];
       step.choices.forEach(([label, value]) => {
@@ -551,7 +644,7 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
         keyboard.push([{ text: `${mark}${label}`, callback_data: `msel:${value}` }]);
       });
       keyboard.push([{ text: `➡️ Continue (${updated.length} selected)`, callback_data: 'msel_done' }]);
-      keyboard.push(navRow(stepIndex));
+      keyboard.push(isEdit ? [{ text: '🚫 Cancel', callback_data: 'nav:cancel' }] : navRow(stepIndex));
       if (input.messageId) {
         await tg('editMessageReplyMarkup', {
           chat_id: chatId,
@@ -568,6 +661,10 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
         return;
       }
       draft[step.key] = current;
+      if (isEdit) {
+        await applyFieldEdit(telegramUserId, chatId, step, current);
+        return;
+      }
       await advanceOrConfirm(telegramUserId, chatId, session.context, draft, stepIndex + 1);
       return;
     }
@@ -597,6 +694,10 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
   }
 
   draft[step.key] = value;
+  if (isEdit) {
+    await applyFieldEdit(telegramUserId, chatId, step, value);
+    return;
+  }
   await advanceOrConfirm(telegramUserId, chatId, session.context, draft, stepIndex + 1);
 }
 
@@ -652,12 +753,39 @@ async function handleInput(session, chatId, telegramUserId, input) {
 
   if (state.startsWith('registering_') && state !== 'registering_confirm') {
     const stepIndex = Number(state.split('_')[1]);
-    await handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex);
+    await handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex, false);
     return;
   }
 
   if (state === 'registering_confirm') {
     await handleConfirm(session, chatId, telegramUserId, input);
+    return;
+  }
+
+  if (state === 'editing_menu') {
+    if (input.kind === 'callback' && input.data === 'edit:done') {
+      await saveSession(telegramUserId, 'idle', {});
+      await sendGreeting(chatId);
+      return;
+    }
+    if (input.kind === 'callback' && input.data?.startsWith('editfield:')) {
+      const idx = Number(input.data.slice('editfield:'.length));
+      const step = STEPS[idx];
+      const profile = await getTutorProfileByTelegramId(telegramUserId);
+      const currentValue = valueForStoredField(step, profile ? profile[columnForStep(step.key)] : null);
+      await saveSession(telegramUserId, `editing_${idx}`, {
+        multiSelect: step.type === 'multi-choice' ? currentValue || [] : undefined,
+      });
+      await sendStepPrompt(chatId, idx, currentValue, { isEdit: true });
+      return;
+    }
+    await sendEditMenu(telegramUserId, chatId);
+    return;
+  }
+
+  if (state.startsWith('editing_')) {
+    const stepIndex = Number(state.split('_')[1]);
+    await handleRegistrationInput(session, chatId, telegramUserId, input, stepIndex, true);
     return;
   }
 
@@ -734,6 +862,9 @@ module.exports.__testables = {
   hexToUuid,
   labelFor,
   formatAssignment,
+  formatAssignmentSummary,
   formatConfirmScreen,
   navRow,
+  columnForStep,
+  valueForStoredField,
 };
