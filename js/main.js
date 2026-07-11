@@ -82,6 +82,14 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Honeypot spam guard: a field named hp_website, hidden off-screen (not
+// display:none — some bots skip those) and never shown to real users. Bots
+// that auto-fill every field trip it; real visitors never see or touch it.
+function isHoneypotTripped(form) {
+  const hp = form.querySelector('#hp_website');
+  return !!(hp && hp.value.trim());
+}
+
 async function showTutorMatchTeaser(form, payload) {
   const container = form.querySelector('.match-teaser');
   if (!container) return;
@@ -195,6 +203,13 @@ function initReviewForm() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (isHoneypotTripped(form)) {
+      form.style.display = 'none';
+      const successPane = document.querySelector('.review-success');
+      if (successPane) successPane.style.display = 'block';
+      return;
+    }
 
     const rating = form.querySelector('.star-input input:checked')?.value;
     const errorEl = form.querySelector('.form-error');
@@ -432,6 +447,16 @@ function initMultiStepForm(formId, table, onSuccess) {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (isHoneypotTripped(form)) {
+      const successPane = form.querySelector('.success-pane-wrap');
+      panes.forEach((p) => p.classList.remove('active'));
+      bars.forEach((b) => { b.classList.add('done'); b.classList.remove('active'); });
+      if (successPane) successPane.style.display = 'block';
+      form.querySelector('.form-nav-wrap')?.style && (form.querySelector('.form-nav-wrap').style.display = 'none');
+      return;
+    }
+
     if (!validatePane(panes[current])) return;
 
     const submitBtn = form.querySelector('[type=submit]');
