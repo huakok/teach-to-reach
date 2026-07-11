@@ -176,6 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMultiStepForm('request-form', 'tutor_requests', showTutorMatchTeaser);
   initMultiStepForm('tutor-form', 'tutor_profiles');
   loadOpenAssignments();
+  loadHeroMatchCard();
   initNavScrollShadow();
   initScrollReveal();
   initHeroEntrance();
@@ -504,7 +505,6 @@ function initMultiStepForm(formId, table, onSuccess) {
   render();
 }
 
-// ---------- Assignment board filters (demo/static data already in HTML) ----------
 // ---------- Live assignment board (assignments.html) ----------
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -573,4 +573,70 @@ async function loadOpenAssignments() {
       renderAssignmentCards(container, filtered);
     });
   }
+}
+
+// ---------- Homepage hero card (index.html) ----------
+// Used to be a hardcoded fake "93% FIT, matched to you" mockup — that's
+// not something an anonymous first-time visitor can genuinely have, so
+// it's replaced with a real recent open assignment (or a real review
+// stat if nothing's open right now). Never fabricated, never personalized
+// to a visitor we know nothing about.
+async function loadHeroMatchCard() {
+  const card = document.getElementById('hero-match-card');
+  if (!card) return;
+
+  const titleEl = document.getElementById('hero-card-title');
+  const tagsEl = document.getElementById('hero-card-tags');
+  const metaEl = document.getElementById('hero-card-meta');
+  const whyEl = document.getElementById('hero-card-why');
+  const badgeNum = document.getElementById('hero-card-badge-num');
+  const badgeLbl = document.getElementById('hero-card-badge-lbl');
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/assignments?select=student_level,subjects,location,rate_min,rate_max,frequency,created_at&status=eq.open&order=created_at.desc&limit=1`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    const rows = res.ok ? await res.json() : [];
+    if (rows && rows.length) {
+      const a = rows[0];
+      const subjects = (a.subjects || []).slice(0, 2).join('/');
+      titleEl.textContent = [a.student_level, subjects].filter(Boolean).join(' · ') || 'Tutor needed';
+      tagsEl.innerHTML = [
+        a.location,
+        a.rate_min && a.rate_max ? `$${a.rate_min}–${a.rate_max}/hr` : null,
+        a.frequency,
+      ].filter(Boolean).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('');
+      metaEl.textContent = `Posted ${timeAgo(a.created_at)} · live on our Telegram channel`;
+      whyEl.innerHTML = '<b>A real assignment</b> — posted to our Telegram channel, where registered tutors get notified and can apply directly.';
+      return;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+
+  // No open assignments right now — fall back to a real trust stat instead
+  // of leaving stale/fake content up.
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/reviews?select=rating&approved=eq.true`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    const rows = res.ok ? await res.json() : [];
+    if (rows && rows.length) {
+      const avg = (rows.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / rows.length).toFixed(1);
+      badgeNum.textContent = `${avg}★`;
+      badgeLbl.textContent = 'RATED';
+      titleEl.textContent = `${avg}★ average, from ${rows.length} real review${rows.length > 1 ? 's' : ''}`;
+      tagsEl.innerHTML = '';
+      metaEl.textContent = 'No open assignments right now — check back soon.';
+      whyEl.innerHTML = '<b>Every review is real</b> — read them all on our reviews page.';
+      return;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+
+  // Nothing real to show at all — hide rather than fabricate.
+  card.style.display = 'none';
 }
