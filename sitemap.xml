@@ -17,7 +17,19 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://teach-to-reach.netlify.app/reviews.html</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://teach-to-reach.netlify.app/leave-a-review.html</loc>
+    <priority>0.3</priority>
+  </url>
+  <url>
     <loc>https://teach-to-reach.netlify.app/privacy.html</loc>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://teach-to-reach.netlify.app/terms.html</loc>
     <priority>0.3</priority>
   </url>
 </urlset>
