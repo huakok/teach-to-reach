@@ -48,17 +48,29 @@ exports.handler = async (event) => {
       </p>`;
   } else if (table === 'tutor_profiles') {
     subject = `New tutor profile — ${record.tutor_name || 'unnamed'}`;
+    // Bot registrations populate a richer field set (age, gender, qualifications,
+    // etc. — see db/schema.sql) that the original website-only form never asked
+    // for. Showing both keeps this email complete regardless of submission source.
+    const experience = record.tutoring_experience || (record.tutor_exp ? `${record.tutor_exp} yrs` : '-');
     html = `
       <h2>New tutor profile</h2>
       <p>
+        <b>Source:</b> ${record.telegram_user_id ? 'Telegram bot' : 'Website form'}<br>
         <b>Name:</b> ${escapeHtml(record.tutor_name)}<br>
         <b>Phone:</b> ${escapeHtml(record.tutor_phone)}<br>
-        <b>Tier:</b> ${escapeHtml(record.tutor_tier)}<br>
-        <b>Experience:</b> ${escapeHtml(record.tutor_exp) || '-'} yrs<br>
-        <b>Levels:</b> ${(record.levels || []).join(', ')}<br>
-        <b>Subjects:</b> ${(record.subjects || []).join(', ')}<br>
-        <b>Rate:</b> $${escapeHtml(record.rate_min)}–${escapeHtml(record.rate_max)}/hr<br>
-        <b>Area:</b> ${escapeHtml(record.tutor_location)}<br>
+        <b>Age:</b> ${escapeHtml(record.age) || '-'}<br>
+        <b>Gender:</b> ${escapeHtml(record.gender) || '-'}<br>
+        <b>Tier:</b> ${escapeHtml(record.tutor_tier) || '-'}<br>
+        <b>Current education:</b> ${escapeHtml(record.current_education) || '-'}<br>
+        <b>Qualifications:</b> ${escapeHtml(record.qualifications) || '-'}<br>
+        <b>Experience:</b> ${escapeHtml(experience)}<br>
+        <b>Teaching style:</b> ${escapeHtml(record.teaching_style) || '-'}<br>
+        <b>Track record:</b> ${escapeHtml(record.track_record) || '-'}<br>
+        <b>Can present certificates:</b> ${escapeHtml(record.can_present_certificates) || '-'}<br>
+        <b>Levels:</b> ${(record.levels || []).join(', ') || '-'}<br>
+        <b>Subjects:</b> ${(record.subjects || []).join(', ') || '-'}<br>
+        <b>Rate:</b> $${escapeHtml(record.rate_min) || '?'}–${escapeHtml(record.rate_max) || '?'}/hr<br>
+        <b>Area:</b> ${escapeHtml(record.tutor_location) || '-'}<br>
         <b>Availability:</b> ${escapeHtml(record.tutor_avail) || '-'}<br>
         <b>Telegram:</b> ${escapeHtml(record.telegram_handle) || '-'}<br>
         <b>Notes:</b> ${escapeHtml(record.tutor_notes) || '-'}
