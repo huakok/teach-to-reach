@@ -51,23 +51,17 @@ const STEPS = [
     choices: [['Male', 'male'], ['Female', 'female']],
   },
   {
-    key: 'qualifications', label: 'Qualifications', type: 'text', maxLen: 500,
+    key: 'qualifications', label: 'Qualifications', type: 'text', maxLen: 600,
     prompt:
-      "🎓 Please key in your qualifications, results and academic achievements (include your school and course of study).\n\n" +
-      'Character limit: 500\n\n' +
+      "🎓 Please key in your academic background — qualifications, results and achievements, plus what you're currently studying if applicable (include school and course of study for each).\n\n" +
+      'Character limit: 600\n\n' +
       'Examples:\n' +
       '- Diploma in Biomedical Science (Ngee Ann Polytechnic)\n' +
       '- A-Level: GP A, H2 Biology (NJC)\n' +
       '- O-Level: English A1, A/E Math A2 (Raffles Girls School)\n' +
       "- PSLE: English A*, Mathematics A*, Science A, Tamil A* (Nan Hua Primary School)\n" +
-      "- Director's list, Dean's list",
-  },
-  {
-    key: 'current_education', label: 'Current education', type: 'text', maxLen: 100, allowNotApplicable: true,
-    prompt:
-      '📖 Please key in your current education (include your school, course of study and projected year of graduation).\n\n' +
-      'Character limit: 100\n\n' +
-      'Example:\n- Undergraduate at NUS, Psychology, 2024',
+      "- Director's list, Dean's list\n" +
+      '- Currently: Undergraduate at NUS, Psychology, expected 2027',
   },
   {
     key: 'tutor_tier', label: 'Tutor category', type: 'choice', prompt: '🏷️ Which category of tutor do you belong to?',
@@ -104,11 +98,6 @@ const STEPS = [
       '- PSLE student scored A for Science\n' +
       '- 80% improvement rate\n\n' +
       '💎 Please indicate if testimonials (screenshots/graded test papers/result slips) are available upon request.',
-  },
-  {
-    key: 'can_present_certificates', label: 'Certificate availability', type: 'choice',
-    prompt: '📄 Will you be able to present soft copies of your educational certificates to our agents upon request?',
-    choices: [['Yes', 'yes'], ['No', 'no'], ['Prefer to present at 1st lesson', 'first_lesson']],
   },
   {
     key: 'levels', label: 'Levels taught', type: 'multi-choice',
@@ -288,12 +277,10 @@ async function upsertTutorProfile(telegramUserId, draft, telegramUsername) {
     tutor_phone: draft.phone_number,
     gender: draft.gender,
     qualifications: draft.qualifications,
-    current_education: draft.current_education,
     tutor_tier: labelFor('tutor_tier', draft.tutor_tier),
     tutoring_experience: draft.tutoring_experience,
     teaching_style: draft.teaching_style,
     track_record: draft.track_record,
-    can_present_certificates: labelFor('can_present_certificates', draft.can_present_certificates),
     levels: draft.levels || [],
     subjects: draft.subjects || [],
     rate_min: draft.rate_min,
@@ -429,10 +416,10 @@ function columnForStep(key) {
 }
 
 // upsertTutorProfile() stores gender as the raw choice value ('male') but
-// tutor_tier/can_present_certificates/tutor_avail as the display label
-// ('Full-time') — matched here so a single-field edit writes the same
-// format the original registration would have.
-const LABEL_STORED_CHOICE_KEYS = new Set(['tutor_tier', 'can_present_certificates', 'tutor_avail']);
+// tutor_tier/tutor_avail as the display label ('Full-time') — matched here
+// so a single-field edit writes the same format the original registration
+// would have.
+const LABEL_STORED_CHOICE_KEYS = new Set(['tutor_tier', 'tutor_avail']);
 
 // Reverses a stored column value back into the raw choice value(s) STEPS
 // buttons are keyed by, so an edit prompt can pre-mark the tutor's current
