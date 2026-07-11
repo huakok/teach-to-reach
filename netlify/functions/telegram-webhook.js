@@ -329,6 +329,26 @@ async function upsertTutorProfile(telegramUserId, draft, telegramUsername) {
   });
 }
 
+// Lets a tutor who already registered on the website get recognized by the
+// bot immediately, instead of being forced through the full wizard again —
+// the bot has no way to know who someone is until either they've talked to
+// it before (telegram_user_id) or they tell it the phone number they used
+// on the website.
+async function findUnlinkedProfileByPhone(phone) {
+  const rows = await sb(`tutor_profiles?tutor_phone=eq.${encodeURIComponent(phone)}&telegram_user_id=is.null&select=*&limit=1`);
+  return rows && rows.length ? rows[0] : null;
+}
+
+async function linkProfileToTelegram(profileId, telegramUserId, telegramUsername) {
+  const payload = { telegram_user_id: telegramUserId, profile_complete: true };
+  if (telegramUsername) payload.telegram_handle = `@${telegramUsername}`;
+  await sb(`tutor_profiles?id=eq.${profileId}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify(payload),
+  });
+}
+
 async function getOpenAssignments(limit = 5) {
   return (await sb(`assignments?status=eq.open&order=created_at.desc&limit=${limit}&select=*`)) || [];
 }
@@ -813,20 +833,22 @@ async function showAssignmentAndMaybeRegister(chatId, telegramUserId, assignment
   await sendMessage(chatId, formatAssignment(assignment));
 
   const profile = await getTutorProfileByTelegramId(telegramUserId);
-  if (!profile || !profile.profile_complete) {
-    await saveSession(telegramUserId, 'awaiting_register_decision', { assignmentId });
-    await sendMessage(
-      chatId,
-      "📝 You don't have a completed tutor profile yet. You may fill a new one now! (It'll be saved and can be used for future applications too.)",
-      [[{ text: '✍️ Register', callback_data: 'reg:start' }, { text: 'Back', callback_data: 'nav:back_to_menu' }]]
-    );
+  if (profile && profile.profile_complete) {
+    // Already registered — apply directly.
+    await createApplication(assignmentId, telegramUserId, profile.id);
+    await saveSession(telegramUserId, 'idle', {});
+    await sendMessage(chatId, "✅ You're all set — your application has been recorded. Our team will be in touch if you're shortlisted!");
     return;
   }
 
-  // Already registered — apply directly.
-  await createApplication(assignmentId, telegramUserId, profile.id);
-  await saveSession(telegramUserId, 'idle', {});
-  await sendMessage(chatId, "✅ You're all set — your application has been recorded. Our team will be in touch if you're shortlisted!");
+  // Not recognized by Telegram account yet — check for an existing website
+  // registration by phone before assuming they need the full wizard.
+  await saveSession(telegramUserId, 'awaiting_phone_check', { assignmentId });
+  await sendMessage(
+    chatId,
+    "📱 Have you already registered as a tutor on our website? If so, reply with the phone number you used and we'll link it up — no need to fill everything in again.",
+    [[{ text: "No, I'm new — register me", callback_data: 'reg:start' }]]
+  );
 }
 
 async function handleMenu(chatId, telegramUserId, action) {
@@ -1074,13 +1096,37 @@ async function handleInput(session, chatId, telegramUserId, input) {
     return;
   }
 
-  if (state === 'awaiting_register_decision') {
-    if (input.data === 'reg:start') {
-      await startRegistration(chatId, telegramUserId, session.context.assignmentId, input.username);
-    } else {
-      await saveSession(telegramUserId, 'idle', {});
-      await sendGreeting(chatId, undefined, telegramUserId);
+  if (state === 'awaiting_phone_check') {
+    if (input.kind === 'callback') {
+      if (input.data === 'reg:start') {
+        await startRegistration(chatId, telegramUserId, session.context.assignmentId, input.username);
+      } else {
+        await saveSession(telegramUserId, 'idle', {});
+        await sendGreeting(chatId, undefined, telegramUserId);
+      }
+      return;
     }
+
+    const existing = await findUnlinkedProfileByPhone(input.text.trim());
+    if (!existing) {
+      await sendMessage(
+        chatId,
+        "🤔 We couldn't find a profile with that number. Try a different number, or register fresh.",
+        [[{ text: "No, I'm new — register me", callback_data: 'reg:start' }]]
+      );
+      return;
+    }
+
+    await linkProfileToTelegram(existing.id, telegramUserId, input.username);
+    const assignmentId = session.context.assignmentId;
+    if (assignmentId) {
+      await createApplication(assignmentId, telegramUserId, existing.id);
+      await saveSession(telegramUserId, 'idle', {});
+      await sendMessage(chatId, "🎉 Found it — you're linked up, and your application has been recorded. Our team will be in touch if you're shortlisted!");
+      return;
+    }
+    await saveSession(telegramUserId, 'idle', {});
+    await sendMessage(chatId, "🎉 Found it — you're linked up and ready to apply to assignments!");
     return;
   }
 
