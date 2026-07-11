@@ -25,8 +25,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME;
 
-const GRACE_CONTACT_MESSAGE =
-  "💬 Questions? Message Grace directly on the TeachToReach Telegram channel: https://t.me/tuitionassignmentsttrsg";
+const TEAM_CONTACT_MESSAGE =
+  "💬 Questions? Message our team directly on the TeachToReach Telegram channel: https://t.me/tuitionassignmentsttrsg";
 
 // ---------- Registration wizard step definitions ----------
 // One place describing every question, so the state machine below can
@@ -204,7 +204,7 @@ const REQUEST_STEPS = [
     key: 'mode', label: 'Lesson mode', type: 'choice', prompt: '💻 Where would lessons happen?',
     choices: [["At student's home", "At student's home"], ['Online', 'Online'], ['Either works', 'Either works']],
   },
-  { key: 'concerns', label: 'Anything else', type: 'text', maxLen: 500, allowNotApplicable: true, prompt: '✏️ Any specific concerns Grace should know? (optional — e.g. "needs help staying focused")' },
+  { key: 'concerns', label: 'Anything else', type: 'text', maxLen: 500, allowNotApplicable: true, prompt: '✏️ Any specific concerns our team should know? (optional — e.g. "needs help staying focused")' },
 ];
 
 function stepsFor(flow) {
@@ -398,7 +398,8 @@ function formatAssignment(a) {
 function formatAssignmentSummary(a) {
   const subjects = (a.subjects || []).slice(0, 2).join('/') || '?';
   const more = (a.subjects || []).length > 2 ? '+' : '';
-  return `${a.student_level || '?'} · ${subjects}${more} · ${a.location || '?'} · $${a.rate_min || '?'}–${a.rate_max || '?'}/hr`;
+  const scorePrefix = typeof a._score === 'number' && a._score > 0 ? `🎯 ${a._score}% · ` : '';
+  return `${scorePrefix}${a.student_level || '?'} · ${subjects}${more} · ${a.location || '?'} · $${a.rate_min || '?'}–${a.rate_max || '?'}/hr`;
 }
 
 // Most STEPS keys map 1:1 onto tutor_profiles columns; these two don't.
@@ -527,7 +528,7 @@ async function fetchTutorMatchTeaser(draft) {
 }
 function formatMatchTeaserMessage(rows) {
   if (!rows.length) {
-    return '📭 No exact match in the pool yet — Grace will personally source one for you within 24–48 hours.';
+    return '📭 No exact match in the pool yet — our team will personally source one for you within 24–48 hours.';
   }
   const cards = rows.map((r) => {
     const rate = r.rate_min && r.rate_max ? `$${r.rate_min}–${r.rate_max}/hr` : '';
@@ -536,11 +537,71 @@ function formatMatchTeaserMessage(rows) {
   });
   return (
     `🎉 ${rows.length} tutor${rows.length > 1 ? 's' : ''} in the pool already look like a good fit:\n\n${cards.join('\n\n')}\n\n` +
-    `Grace will confirm details and personally introduce you to the best fit within 24–48 hours.`
+    `Our team will confirm details and personally introduce you to the best fit within 24–48 hours.`
   );
 }
 
-async function insertTutorRequest(draft) {
+// ---------- Tutor-side assignment matching ----------
+// Assignments' student_level is freeform text Grace types per-assignment
+// (e.g. "Sec 4", "P6"), unlike tutor_requests' clean dropdown values — so
+// this is a looser best-effort match than mapLevelToBucket(), not a strict
+// prefix check.
+function guessLevelBucket(text) {
+  if (!text) return null;
+  const t = text.toLowerCase();
+  if (t.includes('presch') || t.includes('kinder')) return 'Preschool';
+  if (t.includes('poly')) return 'Polytechnic';
+  if (t.includes('ib') || t.includes('/ip') || t.includes(' ip')) return 'IB/IP';
+  if (t.includes('jc') || t.includes('a-level') || t.includes('a level')) return 'JC/A-Level';
+  if (t.includes('sec')) return 'Secondary';
+  if (t.includes('pri') || /\bp[1-6]\b/.test(t)) return 'Primary';
+  return null;
+}
+
+// Scores an open assignment against a tutor's own profile: subject overlap
+// (50), level/age-group match (30), location match (20) — the three
+// factors requested, weighted the same way match_tutors() weights the
+// parent-side match (subject weighted highest).
+function scoreAssignmentForTutor(assignment, tutor) {
+  const tutorSubjects = tutor.subjects || [];
+  const assignmentSubjects = assignment.subjects || [];
+  const overlap = assignmentSubjects.filter((s) => tutorSubjects.includes(s)).length;
+  const subjectScore = assignmentSubjects.length ? (50 * overlap) / assignmentSubjects.length : 0;
+
+  const bucket = guessLevelBucket(assignment.student_level);
+  const levelScore = bucket && (tutor.levels || []).includes(bucket) ? 30 : 0;
+
+  const tutorLoc = (tutor.tutor_location || '').toLowerCase();
+  const aLoc = (assignment.location || '').toLowerCase();
+  let locationScore = 0;
+  if (tutorLoc.includes('anywhere')) locationScore = 20;
+  else if (aLoc && tutorLoc && (tutorLoc.includes(aLoc) || aLoc.includes(tutorLoc))) locationScore = 20;
+
+  return Math.round(subjectScore + levelScore + locationScore);
+}
+
+function rankAssignmentsForTutor(assignments, tutor) {
+  return assignments
+    .map((a) => ({ ...a, _score: scoreAssignmentForTutor(a, tutor) }))
+    .sort((a, b) => b._score - a._score);
+}
+
+// Shown once right after a tutor finishes registering — a welcome-moment
+// nudge toward whatever's already open and a good fit, on top of the
+// ranking applied to the regular "View available assignments" list.
+async function sendAssignmentSuggestions(chatId, tutorProfile, excludeAssignmentId) {
+  const assignments = await getOpenAssignments(20);
+  const pool = excludeAssignmentId ? assignments.filter((a) => a.id !== excludeAssignmentId) : assignments;
+  if (!pool.length) return;
+  const ranked = rankAssignmentsForTutor(pool, tutorProfile).filter((a) => a._score > 0).slice(0, 3);
+  if (!ranked.length) return;
+  const keyboard = ranked.map((a) => [
+    { text: formatAssignmentSummary(a), callback_data: `apply:${a.id.replace(/-/g, '')}` },
+  ]);
+  await sendMessage(chatId, '🎯 Based on your profile, these look like a good fit:', keyboard);
+}
+
+async function insertTutorRequest(draft, source = 'bot') {
   const clean = (v) => (v === 'Not applicable' ? null : v);
   await sb('tutor_requests', {
     method: 'POST',
@@ -557,18 +618,96 @@ async function insertTutorRequest(draft) {
       budget: draft.budget,
       location: draft.location,
       mode: draft.mode,
+      source,
     }),
   });
 }
 
-const GREETING_KEYBOARD = [
-  [{ text: '🎓 Request a tutor for my child', callback_data: 'menu:request_tutor' }],
-  [{ text: 'View available assignments', callback_data: 'menu:assignments' }],
-  [{ text: 'View applications', callback_data: 'menu:applications' }],
-  [{ text: '✏️ Edit my profile', callback_data: 'menu:edit_profile' }],
-  [{ text: 'Contact admin', callback_data: 'menu:contact' }],
-  [{ text: 'Exit', callback_data: 'menu:exit' }],
-];
+async function getUnconvertedRequests(limit = 10) {
+  return (await sb(`tutor_requests?converted_assignment_id=is.null&order=created_at.desc&limit=${limit}&select=*`)) || [];
+}
+
+async function getTutorRequest(id) {
+  const rows = await sb(`tutor_requests?id=eq.${id}&select=*`);
+  return rows && rows.length ? rows[0] : null;
+}
+
+function draftFromRequest(request) {
+  const budgetRange = mapBudgetToRange(request.budget);
+  return {
+    student_level: request.student_level,
+    subjects: request.subjects || [],
+    location: request.location,
+    rate_min: String(budgetRange.min || ''),
+    rate_max: budgetRange.max && budgetRange.max !== 9999 ? String(budgetRange.max) : '',
+    frequency: request.frequency,
+    notes: request.concerns || '',
+  };
+}
+
+function formatAssignmentDraft(draft) {
+  return (
+    `📋 Draft assignment from this request:\n\n` +
+    `Level: ${draft.student_level || '-'}\n` +
+    `Subjects: ${(draft.subjects || []).join(', ') || '-'}\n` +
+    `Area: ${draft.location || '-'}\n` +
+    `Rate: $${draft.rate_min || '?'}–${draft.rate_max || '?'}/hr\n` +
+    `Frequency: ${draft.frequency || '-'}` +
+    (draft.notes ? `\n\n${draft.notes}` : '') +
+    `\n\nPost this to the channel?`
+  );
+}
+
+async function createAssignmentFromDraft(draft, requestId) {
+  const created = await sb('assignments', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({
+      student_level: draft.student_level,
+      subjects: draft.subjects || [],
+      location: draft.location,
+      rate_min: draft.rate_min || null,
+      rate_max: draft.rate_max || null,
+      frequency: draft.frequency,
+      notes: draft.notes || null,
+      status: 'open',
+    }),
+  });
+  const assignment = created && created[0];
+  if (assignment && requestId) {
+    await sb(`tutor_requests?id=eq.${requestId}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ converted_assignment_id: assignment.id }),
+    });
+  }
+  return assignment;
+}
+
+// Telegram user IDs allowed to see the admin menu (Grace + anyone else on
+// the team) — comma-separated in the ADMIN_TELEGRAM_USER_IDS env var.
+const ADMIN_IDS = (process.env.ADMIN_TELEGRAM_USER_IDS || '')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter((n) => !Number.isNaN(n));
+function isAdmin(telegramUserId) {
+  return ADMIN_IDS.includes(Number(telegramUserId));
+}
+
+function buildGreetingKeyboard(telegramUserId) {
+  const keyboard = [
+    [{ text: '🎓 Request a tutor for my child', callback_data: 'menu:request_tutor' }],
+    [{ text: 'View available assignments', callback_data: 'menu:assignments' }],
+    [{ text: 'View applications', callback_data: 'menu:applications' }],
+    [{ text: '✏️ Edit my profile', callback_data: 'menu:edit_profile' }],
+    [{ text: 'Contact our team', callback_data: 'menu:contact' }],
+  ];
+  if (isAdmin(telegramUserId)) {
+    keyboard.push([{ text: '🛠️ Admin tools', callback_data: 'menu:admin_tools' }]);
+  }
+  keyboard.push([{ text: 'Exit', callback_data: 'menu:exit' }]);
+  return keyboard;
+}
 
 async function sendEditMenu(telegramUserId, chatId) {
   await saveSession(telegramUserId, 'editing_menu', {});
@@ -589,13 +728,13 @@ async function applyFieldEdit(telegramUserId, chatId, step, rawValue) {
   await sendEditMenu(telegramUserId, chatId);
 }
 
-async function sendGreeting(chatId, firstName) {
+async function sendGreeting(chatId, firstName, telegramUserId) {
   await sendMessage(
     chatId,
     `Hi ${firstName || 'there'}! 👋\n\n` +
       'Welcome to Teach To Reach Tuition agency! 🎉\n\n' +
       '⚠️ Please *DO NOT* share any sensitive information such as your IC number, contact number & address in the chat itself — your profile is collected through the form questions only, and is only shared with parents once you are shortlisted.',
-    GREETING_KEYBOARD
+    buildGreetingKeyboard(telegramUserId)
   );
 }
 
@@ -661,7 +800,7 @@ async function handleStart(session, chatId, telegramUserId, firstName, payload) 
   }
 
   await saveSession(telegramUserId, 'idle', {});
-  await sendGreeting(chatId, firstName);
+  await sendGreeting(chatId, firstName, telegramUserId);
 }
 
 async function showAssignmentAndMaybeRegister(chatId, telegramUserId, assignmentId) {
@@ -687,7 +826,7 @@ async function showAssignmentAndMaybeRegister(chatId, telegramUserId, assignment
   // Already registered — apply directly.
   await createApplication(assignmentId, telegramUserId, profile.id);
   await saveSession(telegramUserId, 'idle', {});
-  await sendMessage(chatId, "✅ You're all set — your application has been recorded. Grace will be in touch if you're shortlisted!");
+  await sendMessage(chatId, "✅ You're all set — your application has been recorded. Our team will be in touch if you're shortlisted!");
 }
 
 async function handleMenu(chatId, telegramUserId, action) {
@@ -696,10 +835,14 @@ async function handleMenu(chatId, telegramUserId, action) {
     return;
   }
   if (action === 'assignments') {
-    const assignments = await getOpenAssignments();
+    let assignments = await getOpenAssignments();
     if (!assignments.length) {
       await sendMessage(chatId, '📭 No open assignments right now — check back soon!');
       return;
+    }
+    const profile = await getTutorProfileByTelegramId(telegramUserId);
+    if (profile && profile.profile_complete) {
+      assignments = rankAssignmentsForTutor(assignments, profile);
     }
     const keyboard = assignments.map((a) => [
       { text: formatAssignmentSummary(a), callback_data: `apply:${a.id.replace(/-/g, '')}` },
@@ -734,12 +877,20 @@ async function handleMenu(chatId, telegramUserId, action) {
     return;
   }
   if (action === 'contact') {
-    await sendMessage(chatId, GRACE_CONTACT_MESSAGE);
+    await sendMessage(chatId, TEAM_CONTACT_MESSAGE);
     return;
   }
   if (action === 'exit') {
     await saveSession(telegramUserId, 'idle', {});
     await sendGoodbye(chatId);
+    return;
+  }
+  if (action === 'admin_tools') {
+    if (!isAdmin(telegramUserId)) return;
+    await sendMessage(chatId, '🛠️ Admin tools', [
+      [{ text: '📝 Log a parent request', callback_data: 'admin:log_request' }],
+      [{ text: '✅ Convert a request to an assignment', callback_data: 'admin:convert_request' }],
+    ]);
   }
 }
 
@@ -748,8 +899,13 @@ async function startRegistration(chatId, telegramUserId, assignmentId, username)
   await sendStepPrompt(chatId, 0, undefined, { flow: 'register' });
 }
 
-async function startRequest(chatId, telegramUserId) {
-  await saveSession(telegramUserId, 'requesting_0', { draft: {}, flow: 'request' });
+async function startRequest(chatId, telegramUserId, opts = {}) {
+  await saveSession(telegramUserId, 'requesting_0', {
+    draft: {},
+    flow: 'request',
+    source: opts.source || 'bot',
+    adminFlow: !!opts.adminFlow,
+  });
   await sendStepPrompt(chatId, 0, undefined, { flow: 'request' });
 }
 
@@ -771,7 +927,7 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
     }
     await saveSession(telegramUserId, 'idle', {});
     await sendMessage(chatId, 'Cancelled — no changes were saved.');
-    await sendGreeting(chatId);
+    await sendGreeting(chatId, undefined, telegramUserId);
     return;
   }
   if (input.kind === 'callback' && input.data === 'nav:save_exit') {
@@ -866,9 +1022,15 @@ async function handleConfirm(session, chatId, telegramUserId, input, flow = 'reg
     const draft = session.context.draft || {};
 
     if (flow === 'request') {
-      await insertTutorRequest(draft);
+      await insertTutorRequest(draft, session.context.source || 'bot');
       await saveSession(telegramUserId, 'idle', {});
-      await sendMessage(chatId, "🎉 Got it — Grace will personally review this and be in touch soon!");
+
+      if (session.context.adminFlow) {
+        await sendMessage(chatId, '✅ Logged! You can convert it to a published assignment anytime from Admin tools.');
+        return;
+      }
+
+      await sendMessage(chatId, "🎉 Got it — our team will personally review this and be in touch soon!");
       try {
         const matches = await fetchTutorMatchTeaser(draft);
         await sendMessage(chatId, formatMatchTeaserMessage(matches));
@@ -886,12 +1048,14 @@ async function handleConfirm(session, chatId, telegramUserId, input, flow = 'reg
     if (assignmentId) {
       await createApplication(assignmentId, telegramUserId, profile?.id);
       await saveSession(telegramUserId, 'idle', {});
-      await sendMessage(chatId, "🎉 Profile saved and your application has been recorded. Grace will be in touch if you're shortlisted!");
+      await sendMessage(chatId, "🎉 Profile saved and your application has been recorded. Our team will be in touch if you're shortlisted!");
+      if (profile) await sendAssignmentSuggestions(chatId, profile, assignmentId);
       return;
     }
 
     await saveSession(telegramUserId, 'idle', {});
     await sendMessage(chatId, "🎉 Profile saved! You're ready to apply to assignments — try 'View available assignments' from /start.");
+    if (profile) await sendAssignmentSuggestions(chatId, profile);
     return;
   }
   await sendMessage(chatId, 'Please tap Confirm or Start over.');
@@ -915,7 +1079,7 @@ async function handleInput(session, chatId, telegramUserId, input) {
       await startRegistration(chatId, telegramUserId, session.context.assignmentId, input.username);
     } else {
       await saveSession(telegramUserId, 'idle', {});
-      await sendGreeting(chatId);
+      await sendGreeting(chatId, undefined, telegramUserId);
     }
     return;
   }
@@ -945,7 +1109,7 @@ async function handleInput(session, chatId, telegramUserId, input) {
   if (state === 'editing_menu') {
     if (input.kind === 'callback' && input.data === 'edit:done') {
       await saveSession(telegramUserId, 'idle', {});
-      await sendGreeting(chatId);
+      await sendGreeting(chatId, undefined, telegramUserId);
       return;
     }
     if (input.kind === 'callback' && input.data?.startsWith('editfield:')) {
@@ -969,6 +1133,29 @@ async function handleInput(session, chatId, telegramUserId, input) {
     return;
   }
 
+  if (state === 'admin_confirm_assignment') {
+    if (!isAdmin(telegramUserId)) {
+      await saveSession(telegramUserId, 'idle', {});
+      await sendGreeting(chatId, undefined, telegramUserId);
+      return;
+    }
+    if (input.kind === 'callback' && input.data === 'nav:cancel') {
+      await saveSession(telegramUserId, 'idle', {});
+      await sendMessage(chatId, 'Cancelled — nothing was posted.');
+      await sendGreeting(chatId, undefined, telegramUserId);
+      return;
+    }
+    if (input.kind === 'callback' && input.data === 'nav:confirm') {
+      const { draft, requestId } = session.context;
+      const assignment = await createAssignmentFromDraft(draft, requestId);
+      await saveSession(telegramUserId, 'idle', {});
+      await sendMessage(chatId, assignment ? '✅ Posted! It will appear in the channel shortly.' : '⚠️ Something went wrong creating this assignment.');
+      return;
+    }
+    await sendMessage(chatId, 'Please tap Confirm or Cancel.');
+    return;
+  }
+
   // idle (or anything else): menu actions + apply:<id> deep-link-equivalent taps
   if (input.kind === 'callback' && input.data?.startsWith('menu:')) {
     await handleMenu(chatId, telegramUserId, input.data.slice('menu:'.length));
@@ -980,8 +1167,45 @@ async function handleInput(session, chatId, telegramUserId, input) {
     await showAssignmentAndMaybeRegister(chatId, telegramUserId, assignmentId);
     return;
   }
+  if (input.kind === 'callback' && input.data?.startsWith('admin:') && isAdmin(telegramUserId)) {
+    const action = input.data.slice('admin:'.length);
+    if (action === 'log_request') {
+      await startRequest(chatId, telegramUserId, { source: 'whatsapp', adminFlow: true });
+      return;
+    }
+    if (action === 'convert_request') {
+      const requests = await getUnconvertedRequests();
+      if (!requests.length) {
+        await sendMessage(chatId, '📭 No pending requests to convert right now.');
+        return;
+      }
+      const keyboard = requests.map((r) => [
+        {
+          text: `${r.parent_name || 'Unnamed'} · ${r.student_level || '?'} · ${(r.subjects || []).join('/') || '?'}`,
+          callback_data: `convertreq:${r.id.replace(/-/g, '')}`,
+        },
+      ]);
+      await sendMessage(chatId, '📋 Pick a request to turn into a published assignment:', keyboard);
+      return;
+    }
+    return;
+  }
+  if (input.kind === 'callback' && input.data?.startsWith('convertreq:') && isAdmin(telegramUserId)) {
+    const requestId = hexToUuid(input.data.slice('convertreq:'.length));
+    const request = await getTutorRequest(requestId);
+    if (!request) {
+      await sendMessage(chatId, "😕 Couldn't find that request — it may have been converted already.");
+      return;
+    }
+    const draft = draftFromRequest(request);
+    await saveSession(telegramUserId, 'admin_confirm_assignment', { draft, requestId });
+    await sendMessage(chatId, formatAssignmentDraft(draft), [
+      [{ text: '✅ Confirm & post', callback_data: 'nav:confirm' }, { text: '🚫 Cancel', callback_data: 'nav:cancel' }],
+    ]);
+    return;
+  }
   // Unrecognized input while idle — just re-show the greeting.
-  await sendGreeting(chatId);
+  await sendGreeting(chatId, undefined, telegramUserId);
 }
 
 // ---------- Netlify Function entry point ----------

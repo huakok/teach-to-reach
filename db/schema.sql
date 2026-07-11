@@ -282,3 +282,23 @@ create table if not exists bot_sessions (
 );
 
 alter table bot_sessions enable row level security;
+
+-- ==========================================================================
+-- Admin tooling: Grace logging WhatsApp-sourced leads herself, and turning
+-- any tutor_requests row (from the website, the bot, or her own logging)
+-- into a published assignments row without retyping everything.
+-- ==========================================================================
+
+-- Tags where a request came from, mainly so it's obvious in the Table
+-- Editor which rows Grace entered herself vs. ones that arrived organically.
+alter table tutor_requests add column if not exists source text not null default 'website';
+
+-- Nullable link to whichever assignments row this request became, if any —
+-- lets the bot's "convert to assignment" list skip requests already handled,
+-- and lets Grace trace an assignment back to the original request.
+alter table tutor_requests add column if not exists converted_assignment_id uuid references assignments(id) on delete set null;
+
+-- Telegram user IDs allowed to see the admin menu in the bot (Grace, and
+-- anyone else on the team). Comma-separated in the ADMIN_TELEGRAM_USER_IDS
+-- Netlify env var — no schema/table needed for this, just documenting it
+-- here since it's the other half of this admin-tooling section.
