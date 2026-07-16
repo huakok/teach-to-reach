@@ -507,6 +507,23 @@ function initMultiStepForm(formId, table, onSuccess) {
 }
 
 // ---------- Live assignment board (assignments.html) ----------
+// student_level is freeform text Grace types per-assignment (e.g. "Sec 4",
+// "P6"), not a clean enum — so the level/age-range filter can't do an exact
+// match against it (that would silently hide real listings whose text
+// didn't happen to match exactly). This does the same best-effort bucket
+// guess used server-side by the bot's own assignment-matching logic.
+function guessLevelBucket(text) {
+  if (!text) return null;
+  const t = text.toLowerCase();
+  if (t.includes('presch') || t.includes('kinder')) return 'Preschool';
+  if (t.includes('poly')) return 'Polytechnic';
+  if (t.includes('ib') || t.includes('/ip') || t.includes(' ip')) return 'IB/IP';
+  if (t.includes('jc') || t.includes('a-level') || t.includes('a level')) return 'JC/A-Level';
+  if (t.includes('sec')) return 'Secondary';
+  if (t.includes('pri') || /\bp[1-6]\b/.test(t)) return 'Primary';
+  return null;
+}
+
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -568,13 +585,21 @@ async function loadOpenAssignments() {
   renderAssignmentCards(container, assignments || []);
 
   const subjectSel = document.getElementById('filter-subject');
-  if (subjectSel) {
-    subjectSel.addEventListener('change', () => {
-      const val = subjectSel.value;
-      const filtered = val === 'all' ? assignments : assignments.filter((a) => (a.subjects || []).includes(val));
-      renderAssignmentCards(container, filtered);
+  const levelSel = document.getElementById('filter-level');
+
+  function applyFilters() {
+    const subject = subjectSel ? subjectSel.value : 'all';
+    const level = levelSel ? levelSel.value : 'all';
+    const filtered = assignments.filter((a) => {
+      const matchesSubject = subject === 'all' || (a.subjects || []).includes(subject);
+      const matchesLevel = level === 'all' || guessLevelBucket(a.student_level) === level;
+      return matchesSubject && matchesLevel;
     });
+    renderAssignmentCards(container, filtered);
   }
+
+  if (subjectSel) subjectSel.addEventListener('change', applyFilters);
+  if (levelSel) levelSel.addEventListener('change', applyFilters);
 }
 
 // ---------- Homepage hero card (index.html) ----------
