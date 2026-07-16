@@ -7,6 +7,7 @@
 
 const SUPABASE_URL = 'https://iyfkunwywlqfgtyqouqp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Zmt1bnd5d2xxZmd0eXFvdXFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MjM3MjksImV4cCI6MjA5OTA5OTcyOX0.MZi1hwb4G2xPo16tUBaCtd5EXbNwGE8nGG1v6mR3AC4';
+const TELEGRAM_BOT_USERNAME = 'TeachToReachBot';
 
 async function submitToSupabase(table, payload) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
@@ -536,6 +537,7 @@ function renderAssignmentCards(container, list) {
           </div>
           ${a.notes ? `<p style="font-size:0.88rem;color:var(--ink-soft);">${escapeHtml(a.notes)}</p>` : ''}
           <div class="meta-row"><span>Posted ${timeAgo(a.created_at)}</span><span class="rate">${escapeHtml(rate)}</span></div>
+          <a class="btn btn-jade btn-block" style="margin-top:14px;" href="https://t.me/${TELEGRAM_BOT_USERNAME}?start=assignment_${a.id.replace(/-/g, '')}" target="_blank" rel="noopener">Apply via Telegram</a>
         </div>
       </div>`;
   }).join('');
@@ -552,7 +554,7 @@ async function loadOpenAssignments() {
   let assignments;
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/assignments?select=student_level,subjects,location,rate_min,rate_max,frequency,notes,created_at&status=eq.open&order=created_at.desc`,
+      `${SUPABASE_URL}/rest/v1/assignments?select=id,student_level,subjects,location,rate_min,rate_max,frequency,notes,created_at&status=eq.open&order=created_at.desc`,
       { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
     );
     if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
