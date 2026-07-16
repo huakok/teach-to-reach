@@ -4,18 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Become a tutor — TeachToReach</title>
-<meta name="description" content="Register as a tutor with TeachToReach and get matched to assignments that fit your subjects, levels, location and rate.">
+<meta name="description" content="Register as a tutor with TeachToReach through our Telegram bot and get matched to assignments that fit your subjects, levels, location and rate.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TeachToReach">
 <meta property="og:title" content="Become a tutor — TeachToReach">
-<meta property="og:description" content="Register as a tutor with TeachToReach and get matched to assignments that fit your subjects, levels, location and rate.">
+<meta property="og:description" content="Register as a tutor with TeachToReach through our Telegram bot and get matched to assignments that fit your subjects, levels, location and rate.">
 <meta property="og:image" content="https://teach-to-reach.netlify.app/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:url" content="https://teach-to-reach.netlify.app/become-tutor.html">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Become a tutor — TeachToReach">
-<meta name="twitter:description" content="Register as a tutor with TeachToReach and get matched to assignments that fit your subjects, levels, location and rate.">
+<meta name="twitter:description" content="Register as a tutor with TeachToReach through our Telegram bot and get matched to assignments that fit your subjects, levels, location and rate.">
 <meta name="twitter:image" content="https://teach-to-reach.netlify.app/assets/og-image.png">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/styles.css?v=10">
@@ -43,164 +43,49 @@
   <div class="container">
     <span class="eyebrow">For tutors</span>
     <h1>Get matched to assignments worth your time</h1>
-    <p>Fill in your profile once. Once it's set up, new assignments that fit your subjects, levels, area and rate get sent to you on Telegram — no more scrolling a group chat hoping something relevant shows up.</p>
+    <p>Registration happens through our Telegram bot — a short guided chat, not a form. Once you're set up, assignments that fit your subjects, levels, area and rate get sent straight to you, and you can apply with one tap.</p>
   </div>
 </header>
 
 <section>
-  <div class="container">
-    <div class="notice">Your profile is saved directly to our system for review. <b>Next step:</b> once the Telegram bot is live, matching assignments will be sent straight to your Telegram based on the profile you submit here.</div>
+  <div class="container" style="max-width:720px;">
+    <div class="notice">Everything below is handled by the bot — your profile, matching, and applying to assignments. There's no separate form to fill in on this page.</div>
+
+    <div class="steps reveal">
+      <div class="step">
+        <span class="n">01</span>
+        <h3>Tap the button below</h3>
+        <p>Opens a chat with our Telegram bot, already set to start your registration.</p>
+      </div>
+      <div class="step">
+        <span class="n">02</span>
+        <h3>Answer a short set of questions</h3>
+        <p>Your name, subjects, levels, rate, area, availability, and a bit about your teaching background — takes a few minutes, and you can save and pick up later if you need to.</p>
+      </div>
+      <div class="step">
+        <span class="n">03</span>
+        <h3>You're in the pool</h3>
+        <p>Our team reviews new profiles, and you'll start seeing assignments that actually fit you — sorted by how well they match, with a one-tap Apply on each.</p>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:36px 0;">
+      <a href="https://t.me/TeachToReachBot?start=register" target="_blank" rel="noopener" class="btn btn-coral" style="padding:16px 40px;font-size:1.05rem;">Register via Telegram</a>
+      <p class="hint" style="margin-top:12px;">Requires Telegram — if you don't have it, it's a free download for any phone.</p>
+    </div>
 
     <div class="telegram-cta">
       <div class="telegram-cta-text">
         <div class="tg-strip"><span class="tg-dot"></span> Live on Telegram</div>
-        <h3>Want to see live assignments right now — no form required?</h3>
-        <p>Join our Telegram channel for the full list of assignments and daily updates as they come in. Prefer to be personally matched and contacted directly instead? Fill in your profile below.</p>
+        <h3>Want to see live assignments first, before registering?</h3>
+        <p>Join our Telegram channel to browse what's currently open — no registration required to look.</p>
       </div>
-      <a href="https://t.me/tuitionassignmentsttrsg" target="_blank" rel="noopener" class="btn btn-coral telegram-cta-btn">Join our Telegram channel</a>
+      <a href="https://t.me/tuitionassignmentsttrsg" target="_blank" rel="noopener" class="btn btn-outline telegram-cta-btn">Join our Telegram channel</a>
     </div>
 
-    <form id="tutor-form" class="form-shell">
-      <div style="position:absolute;left:-9999px;" aria-hidden="true">
-        <label for="hp_website">Leave this field blank</label>
-        <input type="text" id="hp_website" name="hp_website" tabindex="-1" autocomplete="off">
-      </div>
-      <div class="progress">
-        <div class="bar active"><span></span></div>
-        <div class="bar"><span></span></div>
-        <div class="bar"><span></span></div>
-        <div class="bar"><span></span></div>
-      </div>
-
-      <!-- Step 1: About you -->
-      <div class="step-pane active">
-        <span class="step-label">Step 1 of 4 · About you</span>
-        <div class="grid-2">
-          <div class="field">
-            <label for="tutor_name">Full name *</label>
-            <input type="text" id="tutor_name" name="tutor_name" required>
-          </div>
-          <div class="field">
-            <label for="tutor_phone">Phone / WhatsApp *</label>
-            <input type="tel" id="tutor_phone" name="tutor_phone" required placeholder="+65 9xxx xxxx">
-          </div>
-        </div>
-        <div class="field">
-          <label for="tutor_tier">Which best describes you? *</label>
-          <select id="tutor_tier" name="tutor_tier" required>
-            <option value="">Select</option>
-            <option>Part-time / Undergraduate tutor</option>
-            <option>Full-time tutor</option>
-            <option>Current MOE teacher</option>
-            <option>Ex-MOE teacher</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="tutor_exp">Years of tutoring experience</label>
-          <input type="number" id="tutor_exp" name="tutor_exp" min="0" max="50" placeholder="e.g. 3">
-        </div>
-        <div class="form-nav">
-          <span></span>
-          <button type="button" class="btn btn-jade" data-next>Next</button>
-        </div>
-      </div>
-
-      <!-- Step 2: Subjects & levels -->
-      <div class="step-pane">
-        <span class="step-label">Step 2 of 4 · What you teach</span>
-        <div class="field">
-          <label>Levels you teach *</label>
-          <div class="chip-select" data-multi="levels" data-require-one>
-            <input type="checkbox" id="l1" value="Preschool"><label for="l1">Preschool</label>
-            <input type="checkbox" id="l2" value="Primary"><label for="l2">Primary</label>
-            <input type="checkbox" id="l3" value="Secondary"><label for="l3">Secondary</label>
-            <input type="checkbox" id="l4" value="JC/A-Level"><label for="l4">JC / A-Level</label>
-            <input type="checkbox" id="l5" value="IB/IP"><label for="l5">IB / IP</label>
-            <input type="checkbox" id="l6" value="Polytechnic"><label for="l6">Polytechnic</label>
-          </div>
-        </div>
-        <div class="field">
-          <label>Subjects you teach *</label>
-          <div class="chip-select" data-multi="subjects" data-require-one>
-            <input type="checkbox" id="ts1" value="Mathematics"><label for="ts1">Mathematics</label>
-            <input type="checkbox" id="ts2" value="Physics"><label for="ts2">Physics</label>
-            <input type="checkbox" id="ts3" value="Chemistry"><label for="ts3">Chemistry</label>
-            <input type="checkbox" id="ts4" value="Biology"><label for="ts4">Biology</label>
-            <input type="checkbox" id="ts5" value="English"><label for="ts5">English</label>
-            <input type="checkbox" id="ts6" value="Chinese"><label for="ts6">Chinese</label>
-            <input type="checkbox" id="ts7" value="Economics"><label for="ts7">Economics</label>
-            <input type="checkbox" id="ts8" value="Other"><label for="ts8">Other</label>
-          </div>
-        </div>
-        <div class="form-nav">
-          <button type="button" class="btn btn-outline" data-back>Back</button>
-          <button type="button" class="btn btn-jade" data-next>Next</button>
-        </div>
-      </div>
-
-      <!-- Step 3: Rate, area, availability -->
-      <div class="step-pane">
-        <span class="step-label">Step 3 of 4 · Rate &amp; availability</span>
-        <div class="grid-2">
-          <div class="field">
-            <label for="rate_min">Rate range — from ($/hr) *</label>
-            <input type="number" id="rate_min" name="rate_min" required min="0" placeholder="e.g. 40">
-          </div>
-          <div class="field">
-            <label for="rate_max">to ($/hr) *</label>
-            <input type="number" id="rate_max" name="rate_max" required min="0" placeholder="e.g. 60">
-          </div>
-        </div>
-        <div class="field">
-          <label for="tutor_location">Preferred areas *</label>
-          <input type="text" id="tutor_location" name="tutor_location" required placeholder="e.g. Punggol, Sengkang, or 'anywhere North-East'">
-          <p class="hint">This is what the bot uses to filter which assignments reach you — be as specific or as broad as you like.</p>
-        </div>
-        <div class="field">
-          <label for="tutor_avail">Availability</label>
-          <select id="tutor_avail" name="tutor_avail">
-            <option>Weekday evenings</option>
-            <option>Weekday daytime</option>
-            <option>Weekends</option>
-            <option>Flexible / anytime</option>
-          </select>
-        </div>
-        <div class="form-nav">
-          <button type="button" class="btn btn-outline" data-back>Back</button>
-          <button type="button" class="btn btn-jade" data-next>Next</button>
-        </div>
-      </div>
-
-      <!-- Step 4: Telegram + confirmation -->
-      <div class="step-pane">
-        <span class="step-label">Step 4 of 4 · Get matched on Telegram</span>
-        <div class="field">
-          <label for="telegram_handle">Telegram username</label>
-          <input type="text" id="telegram_handle" name="telegram_handle" placeholder="@yourhandle">
-          <p class="hint">Once the bot is live, this is where personalised assignment alerts get sent. You can also add it later.</p>
-        </div>
-        <div class="field">
-          <label>A little about your teaching style (optional)</label>
-          <textarea name="tutor_notes" placeholder="e.g. patient with weaker students, good with exam technique, strict on homework..."></textarea>
-          <p class="hint">Our team reads every profile — this helps them (and the bot) match you to students you'll actually enjoy teaching.</p>
-        </div>
-        <p class="hint">By submitting, you agree to our team contacting you about tutoring opportunities. Your details are stored securely and only used for assignment matching.</p>
-        <p class="form-error" style="display:none;"></p>
-        <div class="form-nav">
-          <button type="button" class="btn btn-outline" data-back>Back</button>
-          <button type="submit" class="btn btn-coral">Submit profile</button>
-        </div>
-      </div>
-
-      <div class="success-pane-wrap" style="display:none;">
-        <div class="success-pane">
-          <div class="tile tile-score high"><span class="num">✓</span></div>
-          <h3>Profile received.</h3>
-          <p>Our team will review it before you're added to the active pool. In the meantime, take a look at the kinds of assignments that come through.</p>
-          <a href="assignments.html" class="btn btn-jade">Browse assignments</a>
-        </div>
-      </div>
-    </form>
+    <p style="text-align:center;margin-top:32px;">
+      <a href="assignments.html" class="btn-ghost">Or browse open assignments on the website first</a>
+    </p>
   </div>
 </section>
 
