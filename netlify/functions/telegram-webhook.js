@@ -704,6 +704,7 @@ function isAdmin(telegramUserId) {
 function buildGreetingKeyboard(telegramUserId) {
   const keyboard = [
     [{ text: '🎓 Request a tutor for my child', callback_data: 'menu:request_tutor' }],
+    [{ text: '📝 Register as a tutor', callback_data: 'menu:register_tutor' }],
     [{ text: 'View available assignments', callback_data: 'menu:assignments' }],
     [{ text: 'View applications', callback_data: 'menu:applications' }],
     [{ text: '✏️ Edit my profile', callback_data: 'menu:edit_profile' }],
@@ -771,7 +772,7 @@ async function advanceOrConfirm(telegramUserId, chatId, context, draft, nextInde
 }
 
 // ---------- Main state machine ----------
-async function handleStart(session, chatId, telegramUserId, firstName, payload) {
+async function handleStart(session, chatId, telegramUserId, firstName, payload, username) {
   if (payload && payload.startsWith('assignment_')) {
     const assignmentId = hexToUuid(payload.replace('assignment_', ''));
     await saveSession(telegramUserId, 'viewing_assignment_prompt', { assignmentId });
@@ -780,6 +781,16 @@ async function handleStart(session, chatId, telegramUserId, firstName, payload) 
       "📋 You've selected an assignment — want to see the details?",
       [[{ text: '👀 Yes', callback_data: 'view:yes' }, { text: 'Exit', callback_data: 'view:exit' }]]
     );
+    return;
+  }
+
+  // Direct entry point for "Register as a tutor" links (e.g. from the
+  // website) — skips the greeting menu and goes straight into the wizard,
+  // since intent is already known from the link they tapped. Only applies
+  // to a brand-new/idle session; an in-progress registration still resumes
+  // normally below rather than restarting.
+  if (payload === 'register' && !session.state.startsWith('registering_') && session.state !== 'registering_confirm') {
+    await startRegistration(chatId, telegramUserId, null, username);
     return;
   }
 
@@ -838,9 +849,18 @@ async function showAssignmentAndMaybeRegister(chatId, telegramUserId, assignment
   );
 }
 
-async function handleMenu(chatId, telegramUserId, action) {
+async function handleMenu(chatId, telegramUserId, action, username) {
   if (action === 'request_tutor') {
     await startRequest(chatId, telegramUserId);
+    return;
+  }
+  if (action === 'register_tutor') {
+    const profile = await getTutorProfileByTelegramId(telegramUserId);
+    if (profile && profile.profile_complete) {
+      await sendMessage(chatId, "✅ You're already registered! Use 'Edit my profile' if you'd like to update anything.");
+      return;
+    }
+    await startRegistration(chatId, telegramUserId, null, username);
     return;
   }
   if (action === 'assignments') {
@@ -1191,7 +1211,7 @@ async function handleInput(session, chatId, telegramUserId, input) {
 
   // idle (or anything else): menu actions + apply:<id> deep-link-equivalent taps
   if (input.kind === 'callback' && input.data?.startsWith('menu:')) {
-    await handleMenu(chatId, telegramUserId, input.data.slice('menu:'.length));
+    await handleMenu(chatId, telegramUserId, input.data.slice('menu:'.length), input.username);
     return;
   }
   if (input.kind === 'callback' && input.data?.startsWith('apply:')) {
@@ -1282,7 +1302,7 @@ exports.handler = async (event) => {
       const text = (msg.text || '').trim();
       if (text === '/start' || text.startsWith('/start ')) {
         const payload = text.split(' ')[1];
-        await handleStart(session, chatId, telegramUserId, from.first_name, payload);
+        await handleStart(session, chatId, telegramUserId, from.first_name, payload, from.username);
       } else {
         await handleInput(session, chatId, telegramUserId, { kind: 'text', text, username: from.username });
       }
