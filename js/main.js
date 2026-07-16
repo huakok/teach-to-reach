@@ -148,11 +148,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggle = document.querySelector('.nav-toggle');
   const links = document.querySelector('.nav-links');
   if (toggle && links) {
-    toggle.addEventListener('click', () => {
-      const open = links.style.display === 'flex';
+    const isOpen = () => links.style.display === 'flex';
+
+    function openMenu() {
       const navHeight = document.querySelector('.site-nav .inner').offsetHeight;
-      links.style.display = open ? 'none' : 'flex';
-      links.style.cssText += open ? '' : `position:absolute;top:${navHeight}px;left:0;right:0;background:#0B0B0A;border-bottom:1px solid rgba(232,196,104,0.22);flex-direction:column;padding:20px 24px;gap:18px;`;
+      links.style.display = 'flex';
+      links.style.cssText += `position:absolute;top:${navHeight}px;left:0;right:0;background:#0B0B0A;border-bottom:1px solid rgba(232,196,104,0.22);flex-direction:column;padding:20px 24px;gap:18px;`;
+    }
+
+    function closeMenu() {
+      links.style.display = 'none';
+    }
+
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isOpen() ? closeMenu() : openMenu();
+    });
+
+    // Tapping a link (e.g. a same-page #anchor, which doesn't trigger a
+    // full page navigation) should close the menu too, not just clicking
+    // outside it.
+    links.addEventListener('click', (e) => {
+      if (e.target.closest('a')) closeMenu();
+    });
+
+    // Click/tap anywhere outside the open menu closes it.
+    document.addEventListener('click', (e) => {
+      if (isOpen() && !links.contains(e.target) && !toggle.contains(e.target)) {
+        closeMenu();
+      }
     });
   }
 
