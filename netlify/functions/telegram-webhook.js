@@ -857,7 +857,9 @@ async function handleMenu(chatId, telegramUserId, action, username) {
   if (action === 'register_tutor') {
     const profile = await getTutorProfileByTelegramId(telegramUserId);
     if (profile && profile.profile_complete) {
-      await sendMessage(chatId, "✅ You're already registered! Use 'Edit my profile' if you'd like to update anything.");
+      await sendMessage(chatId, "✅ You're already registered! Tap below if you'd like to update anything.", [
+        [{ text: '✏️ Edit my profile', callback_data: 'menu:edit_profile' }],
+      ]);
       return;
     }
     await startRegistration(chatId, telegramUserId, null, username);
