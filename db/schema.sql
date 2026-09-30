@@ -70,7 +70,7 @@ create policy "Public can submit tutor profiles"
 create or replace function match_tutors(
   p_subjects text[],
   p_level_bucket text,
-  p_location text,
+  p_location text,               -- a region label ('North-East') or 'Online'
   p_budget_min numeric,
   p_budget_max numeric
 )
@@ -102,11 +102,15 @@ begin
           / greatest(cardinality(p_subjects), 1))
       -- level bucket match: 25
       + case when p_level_bucket = any(tp.levels) then 25 else 0 end
-      -- location: loose substring match either direction, or tutor marked "anywhere": 20
+      -- region: 20 if the requested region (or 'Online') is one of the
+      -- tutor's regions. tutor_location holds the bot's button labels as a
+      -- list ("North-East, East, Online"), so this is an exact element
+      -- match: 'East' must not match 'North-East' the way a substring
+      -- check would.
       + case
-          when tp.tutor_location ilike '%anywhere%' then 20
-          when p_location is not null and tp.tutor_location ilike '%' || p_location || '%' then 20
-          when p_location is not null and p_location ilike '%' || tp.tutor_location || '%' then 20
+          when p_location is not null
+           and p_location = any(string_to_array(coalesce(tp.tutor_location, ''), ', '))
+          then 20
           else 0
         end
       -- rate range overlap: 15 (guarded — malformed rate text just scores 0, never errors)
@@ -302,3 +306,16 @@ alter table tutor_requests add column if not exists converted_assignment_id uuid
 -- anyone else on the team). Comma-separated in the ADMIN_TELEGRAM_USER_IDS
 -- Netlify env var — no schema/table needed for this, just documenting it
 -- here since it's the other half of this admin-tooling section.
+
+-- ==========================================================================
+-- Regions (button-picked) for matching
+--
+-- Location used to be free text on every side, matched by substring — so
+-- "Sengkang" never matched "Buangkok", and "anywhere North-East" counted as
+-- anywhere in Singapore. The bot now asks for a region with buttons
+-- (North / North-East / East / West / Central, plus Online for tutors and
+-- online-only requests). The neighbourhood text is kept alongside it for
+-- humans; matching only compares regions.
+-- ==========================================================================
+alter table tutor_requests add column if not exists region text;
+alter table assignments add column if not exists region text;

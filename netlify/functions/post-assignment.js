@@ -20,12 +20,19 @@
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 
+// Same format as telegram-webhook.js's formatArea().
+function formatArea(a) {
+  if (a.region === 'Online') return a.location ? `Online (${a.location})` : 'Online';
+  if (a.location && a.region) return `${a.location} (${a.region})`;
+  return a.location || a.region || '-';
+}
+
 function formatAssignmentMessage(a) {
   return (
     `📋 New Assignment\n\n` +
     `Level: ${a.student_level || '-'}\n` +
     `Subjects: ${(a.subjects || []).join(', ') || '-'}\n` +
-    `Area: ${a.location || '-'}\n` +
+    `Area: ${formatArea(a)}\n` +
     `Rate: $${a.rate_min || '?'}–${a.rate_max || '?'}/hr\n` +
     `Frequency: ${a.frequency || '-'}` +
     (a.notes ? `\n\n${a.notes}` : '')

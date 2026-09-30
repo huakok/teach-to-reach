@@ -51,6 +51,7 @@ exports.handler = async (event) => {
         <b>Subjects:</b> ${(record.subjects || []).join(', ')}<br>
         <b>Frequency:</b> ${escapeHtml(record.frequency)}<br>
         <b>Budget:</b> ${escapeHtml(record.budget)}<br>
+        <b>Region:</b> ${escapeHtml(record.region) || '-'}<br>
         <b>Location:</b> ${escapeHtml(record.location)}<br>
         <b>Mode:</b> ${escapeHtml(record.mode) || '-'}<br>
         <b>Concerns:</b> ${escapeHtml(record.concerns) || '-'}
@@ -77,7 +78,7 @@ exports.handler = async (event) => {
         <b>Levels:</b> ${(record.levels || []).join(', ') || '-'}<br>
         <b>Subjects:</b> ${(record.subjects || []).join(', ') || '-'}<br>
         <b>Rate:</b> $${escapeHtml(record.rate_min) || '?'}–${escapeHtml(record.rate_max) || '?'}/hr<br>
-        <b>Area:</b> ${escapeHtml(record.tutor_location) || '-'}<br>
+        <b>Regions:</b> ${escapeHtml(record.tutor_location) || '-'}<br>
         <b>Availability:</b> ${escapeHtml(record.tutor_avail) || '-'}<br>
         <b>Telegram:</b> ${escapeHtml(record.telegram_handle) || '-'}<br>
         <b>Notes:</b> ${escapeHtml(record.tutor_notes) || '-'}
@@ -93,7 +94,7 @@ exports.handler = async (event) => {
       <p>
         <b>Assignment:</b> ${escapeHtml(assignment?.student_level) || '-'} ·
         ${(assignment?.subjects || []).join(', ') || '-'} ·
-        ${escapeHtml(assignment?.location) || '-'} ·
+        ${escapeHtml(assignment?.location) || '-'}${assignment?.region ? ` (${escapeHtml(assignment.region)})` : ''} ·
         $${escapeHtml(assignment?.rate_min) || '?'}–${escapeHtml(assignment?.rate_max) || '?'}/hr
       </p>
       <p>

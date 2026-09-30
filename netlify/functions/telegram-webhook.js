@@ -42,6 +42,19 @@ const TEAM_CONTACT_MESSAGE =
 // original bot spec never asked for these, which left every bot-only
 // profile unmatchable via match_tutors() and left the notification email
 // showing empty fields.
+// Singapore regions, used as button choices everywhere a location is
+// asked (tutor regions, parent requests, assignments) so matching compares
+// exact values instead of guessing from free text. Label and value are the
+// same so the stored text reads naturally ("North-East, East").
+const REGION_CHOICES = [
+  ['North', 'North'],
+  ['North-East', 'North-East'],
+  ['East', 'East'],
+  ['West', 'West'],
+  ['Central', 'Central'],
+];
+const ONLINE = 'Online';
+
 const STEPS = [
   { key: 'full_name', label: 'Full name', type: 'text', prompt: "👋 What's your full name?" },
   { key: 'age', label: 'Age', type: 'text', prompt: "🎂 What's your age?" },
@@ -136,17 +149,39 @@ const STEPS = [
     prompt: '💰 And the upper end? ($/hr, e.g. 60)',
   },
   {
-    key: 'tutor_location', label: 'Areas covered', type: 'text',
-    prompt: '📍 Which areas do you cover? (e.g. "Punggol, Sengkang", or "anywhere North-East")',
+    key: 'tutor_location', label: 'Regions covered', type: 'multi-choice',
+    prompt: '📍 Which regions can you teach in? Tap Online too if you teach online lessons. (tap all that apply, then Continue)',
+    choices: [...REGION_CHOICES, [ONLINE, ONLINE]],
+    // Older profiles hold free text ("Punggol, Sengkang") that can't be
+    // mapped reliably — dropped rather than kept as invisible selections,
+    // so the tutor just re-picks their regions on their next edit.
+    strictChoices: true,
+    legacyValues: { anywhere: REGION_CHOICES.map(([, v]) => v) },
   },
   {
-    key: 'tutor_avail', label: 'Availability', type: 'choice', prompt: '🗓️ When are you generally available?',
+    key: 'tutor_avail', label: 'Availability', type: 'multi-choice',
+    prompt: '🗓️ When are you generally available? (tap all that apply, then Continue)',
     choices: [
+      ['Weekday afternoons', 'weekday_afternoons'],
       ['Weekday evenings', 'weekday_evenings'],
-      ['Weekday daytime', 'weekday_daytime'],
-      ['Weekends', 'weekends'],
+      ['Saturday', 'saturday'],
+      ['Sunday', 'sunday'],
       ['Flexible / anytime', 'flexible'],
     ],
+    // Picking this clears every other option (and vice versa) — "anytime"
+    // plus specific slots is contradictory.
+    exclusiveValue: 'flexible',
+    // Stored in the existing text column as a readable label list
+    // ("Weekday evenings, Saturday") via labelFor — see
+    // LABEL_STORED_CHOICE_KEYS — so the email and match teaser keep
+    // displaying it with no schema change.
+    // Answers from when this was a single choice — mapped onto the new
+    // options so editing an older profile pre-ticks something sensible.
+    legacyValues: {
+      weekday_daytime: ['weekday_afternoons'],
+      'weekday daytime': ['weekday_afternoons'],
+      weekends: ['saturday', 'sunday'],
+    },
   },
 ];
 
@@ -188,7 +223,8 @@ const REQUEST_STEPS = [
     key: 'budget', label: 'Budget', type: 'choice', prompt: "💰 What's your budget per hour?",
     choices: [['Under $30', 'Under $30'], ['$30–50', '$30–50'], ['$50–80', '$50–80'], ['$80–120', '$80–120'], ['$120+', '$120+']],
   },
-  { key: 'location', label: 'Area', type: 'text', prompt: '📍 Which area / neighbourhood are you in? (e.g. "Punggol, Tampines")' },
+  { key: 'region', label: 'Region', type: 'choice', prompt: '🗺️ Which region are you in?', choices: REGION_CHOICES },
+  { key: 'location', label: 'Neighbourhood', type: 'text', prompt: '📍 Which neighbourhood or nearest MRT? (e.g. "Punggol, near Sumang LRT")' },
   {
     key: 'mode', label: 'Lesson mode', type: 'choice', prompt: '💻 Where would lessons happen?',
     choices: [["At student's home", "At student's home"], ['Online', 'Online'], ['Either works', 'Either works']],
@@ -285,8 +321,8 @@ async function upsertTutorProfile(telegramUserId, draft, telegramUsername) {
     subjects: draft.subjects || [],
     rate_min: draft.rate_min,
     rate_max: draft.rate_max,
-    tutor_location: draft.tutor_location,
-    tutor_avail: labelFor('tutor_avail', draft.tutor_avail),
+    tutor_location: labelFor('tutor_location', toChoiceValues(STEPS.find((s) => s.key === 'tutor_location'), draft.tutor_location)),
+    tutor_avail: labelFor('tutor_avail', toChoiceValues(STEPS.find((s) => s.key === 'tutor_avail'), draft.tutor_avail)),
     // Auto-filled from the tutor's Telegram account rather than asked —
     // always accurate, one less question. Left blank (not asked) if they
     // don't have a public username set.
@@ -388,12 +424,20 @@ function hexToUuid(hex) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+// "Punggol, near Sumang LRT (North-East)" — neighbourhood for humans,
+// region so tutors can scan quickly. Either part may be missing on older rows.
+function formatArea(a) {
+  if (a.region === ONLINE) return a.location ? `Online (${a.location})` : 'Online';
+  if (a.location && a.region) return `${a.location} (${a.region})`;
+  return a.location || a.region || '-';
+}
+
 function formatAssignment(a) {
   return (
     `📋 Assignment\n\n` +
     `Level: ${a.student_level || '-'}\n` +
     `Subjects: ${(a.subjects || []).join(', ') || '-'}\n` +
-    `Area: ${a.location || '-'}\n` +
+    `Area: ${formatArea(a)}\n` +
     `Rate: $${a.rate_min || '?'}–${a.rate_max || '?'}/hr\n` +
     `Frequency: ${a.frequency || '-'}` +
     (a.notes ? `\n\n${a.notes}` : '')
@@ -406,7 +450,7 @@ function formatAssignmentSummary(a) {
   const subjects = (a.subjects || []).slice(0, 2).join('/') || '?';
   const more = (a.subjects || []).length > 2 ? '+' : '';
   const scorePrefix = typeof a._score === 'number' && a._score > 0 ? `🎯 ${a._score}% · ` : '';
-  return `${scorePrefix}${a.student_level || '?'} · ${subjects}${more} · ${a.location || '?'} · $${a.rate_min || '?'}–${a.rate_max || '?'}/hr`;
+  return `${scorePrefix}${a.student_level || '?'} · ${subjects}${more} · ${a.region || a.location || '?'} · $${a.rate_min || '?'}–${a.rate_max || '?'}/hr`;
 }
 
 // Most STEPS keys map 1:1 onto tutor_profiles columns; these two don't.
@@ -419,22 +463,40 @@ function columnForStep(key) {
 // tutor_tier/tutor_avail as the display label ('Full-time') — matched here
 // so a single-field edit writes the same format the original registration
 // would have.
-const LABEL_STORED_CHOICE_KEYS = new Set(['tutor_tier', 'tutor_avail']);
+const LABEL_STORED_CHOICE_KEYS = new Set(['tutor_tier', 'tutor_avail', 'tutor_location']);
+
+// Normalizes a multi-choice answer into the raw choice values its buttons
+// are keyed by. Accepts an array (normal case), a comma-separated label
+// string (label-stored columns), or a single legacy value (a draft or
+// profile saved back when the step was single-choice).
+function toChoiceValues(step, stored) {
+  if (stored == null) return [];
+  const parts = Array.isArray(stored) ? stored : String(stored).split(/,\s*/).filter(Boolean);
+  return parts.flatMap((v) => {
+    const key = String(v).toLowerCase();
+    const byValue = step.choices.find(([, cv]) => String(cv).toLowerCase() === key);
+    if (byValue) return [byValue[1]];
+    const byLabel = step.choices.find(([lbl]) => lbl.toLowerCase() === key);
+    if (byLabel) return [byLabel[1]];
+    if (step.legacyValues && step.legacyValues[key]) return step.legacyValues[key];
+    return step.strictChoices ? [] : [v];
+  }).filter((v, i, arr) => arr.indexOf(v) === i);
+}
+
+// Toggles one multi-choice value, enforcing the step's exclusiveValue:
+// choosing it clears everything else, choosing anything else clears it.
+function toggleMultiSelect(step, current, val) {
+  if (current.includes(val)) return current.filter((v) => v !== val);
+  if (step.exclusiveValue && val === step.exclusiveValue) return [val];
+  return [...current.filter((v) => v !== step.exclusiveValue), val];
+}
 
 // Reverses a stored column value back into the raw choice value(s) STEPS
 // buttons are keyed by, so an edit prompt can pre-mark the tutor's current
 // answer regardless of which of the two storage formats above was used.
 function valueForStoredField(step, stored) {
   if (stored == null) return stored;
-  if (step.type === 'multi-choice') {
-    const arr = Array.isArray(stored) ? stored : [];
-    return arr.map((v) => {
-      const byValue = step.choices.find(([, cv]) => String(cv).toLowerCase() === String(v).toLowerCase());
-      if (byValue) return byValue[1];
-      const byLabel = step.choices.find(([lbl]) => lbl.toLowerCase() === String(v).toLowerCase());
-      return byLabel ? byLabel[1] : v;
-    });
-  }
+  if (step.type === 'multi-choice') return toChoiceValues(step, stored);
   if (step.type === 'choice') {
     const byValue = step.choices.find(([, cv]) => String(cv).toLowerCase() === String(stored).toLowerCase());
     if (byValue) return byValue[1];
@@ -526,13 +588,20 @@ async function fetchTutorMatchTeaser(draft) {
     body: JSON.stringify({
       p_subjects: expandSubjectsForMatching(draft.subjects),
       p_level_bucket: mapLevelToBucket(draft.student_level),
-      p_location: draft.location || null,
+      p_location: regionForMatching(draft),
       p_budget_min: budgetRange.min,
       p_budget_max: budgetRange.max,
     }),
   });
   return rows || [];
 }
+// Online-only requests match tutors who teach online; everyone else is
+// matched on their region.
+function regionForMatching(request) {
+  if (request.mode === 'Online') return ONLINE;
+  return request.region || null;
+}
+
 function formatMatchTeaserMessage(rows) {
   if (!rows.length) {
     return '📭 No exact match in the pool yet — our team will personally source one for you within 24–48 hours.';
@@ -566,7 +635,8 @@ function guessLevelBucket(text) {
 }
 
 // Scores an open assignment against a tutor's own profile: subject overlap
-// (50), level/age-group match (30), location match (20) — the three
+// (50), level/age-group match (30), region match (20, exact — including
+// Online for online assignments) — the three
 // factors requested, weighted the same way match_tutors() weights the
 // parent-side match (subject weighted highest).
 function scoreAssignmentForTutor(assignment, tutor) {
@@ -578,11 +648,8 @@ function scoreAssignmentForTutor(assignment, tutor) {
   const bucket = guessLevelBucket(assignment.student_level);
   const levelScore = bucket && (tutor.levels || []).includes(bucket) ? 30 : 0;
 
-  const tutorLoc = (tutor.tutor_location || '').toLowerCase();
-  const aLoc = (assignment.location || '').toLowerCase();
-  let locationScore = 0;
-  if (tutorLoc.includes('anywhere')) locationScore = 20;
-  else if (aLoc && tutorLoc && (tutorLoc.includes(aLoc) || aLoc.includes(tutorLoc))) locationScore = 20;
+  const tutorRegions = toChoiceValues(STEPS.find((s) => s.key === 'tutor_location'), tutor.tutor_location);
+  const locationScore = assignment.region && tutorRegions.includes(assignment.region) ? 20 : 0;
 
   return Math.round(subjectScore + levelScore + locationScore);
 }
@@ -623,6 +690,7 @@ async function insertTutorRequest(draft, source = 'bot') {
       subjects: draft.subjects || [],
       frequency: draft.frequency,
       budget: draft.budget,
+      region: draft.region,
       location: draft.location,
       mode: draft.mode,
       source,
@@ -644,6 +712,7 @@ function draftFromRequest(request) {
   return {
     student_level: request.student_level,
     subjects: request.subjects || [],
+    region: regionForMatching(request),
     location: request.location,
     rate_min: String(budgetRange.min || ''),
     rate_max: budgetRange.max && budgetRange.max !== 9999 ? String(budgetRange.max) : '',
@@ -657,12 +726,28 @@ function formatAssignmentDraft(draft) {
     `📋 Draft assignment from this request:\n\n` +
     `Level: ${draft.student_level || '-'}\n` +
     `Subjects: ${(draft.subjects || []).join(', ') || '-'}\n` +
-    `Area: ${draft.location || '-'}\n` +
+    `Area: ${formatArea(draft)}\n` +
     `Rate: $${draft.rate_min || '?'}–${draft.rate_max || '?'}/hr\n` +
     `Frequency: ${draft.frequency || '-'}` +
     (draft.notes ? `\n\n${draft.notes}` : '') +
     `\n\nPost this to the channel?`
   );
+}
+
+// Requests logged before regions existed have only free-text location —
+// the admin picks the region once here so the assignment can be matched.
+async function promptAssignmentRegion(chatId, telegramUserId, draft, requestId) {
+  await saveSession(telegramUserId, 'admin_pick_region', { draft, requestId });
+  const keyboard = [...REGION_CHOICES, [ONLINE, ONLINE]].map(([label, value]) => [{ text: label, callback_data: `region:${value}` }]);
+  keyboard.push([{ text: '🚫 Cancel', callback_data: 'nav:cancel' }]);
+  await sendMessage(chatId, `🗺️ Which region is this assignment in?\n\nArea given: ${draft.location || '-'}`, keyboard);
+}
+
+async function showAssignmentConfirm(chatId, telegramUserId, draft, requestId) {
+  await saveSession(telegramUserId, 'admin_confirm_assignment', { draft, requestId });
+  await sendMessage(chatId, formatAssignmentDraft(draft), [
+    [{ text: '✅ Confirm & post', callback_data: 'nav:confirm' }, { text: '🚫 Cancel', callback_data: 'nav:cancel' }],
+  ]);
 }
 
 async function createAssignmentFromDraft(draft, requestId) {
@@ -672,6 +757,7 @@ async function createAssignmentFromDraft(draft, requestId) {
     body: JSON.stringify({
       student_level: draft.student_level,
       subjects: draft.subjects || [],
+      region: draft.region || null,
       location: draft.location,
       rate_min: draft.rate_min || null,
       rate_max: draft.rate_max || null,
@@ -726,7 +812,7 @@ async function sendEditMenu(telegramUserId, chatId) {
 
 async function applyFieldEdit(telegramUserId, chatId, step, rawValue) {
   const column = columnForStep(step.key);
-  const dbValue = step.type === 'choice' && LABEL_STORED_CHOICE_KEYS.has(step.key) ? labelFor(step.key, rawValue) : rawValue;
+  const dbValue = LABEL_STORED_CHOICE_KEYS.has(step.key) ? labelFor(step.key, rawValue) : rawValue;
   await sb(`tutor_profiles?telegram_user_id=eq.${telegramUserId}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
@@ -754,7 +840,7 @@ async function sendGoodbye(chatId) {
 async function goToStep(telegramUserId, chatId, context, draft, index, flow = 'register') {
   const steps = stepsFor(flow);
   const step = steps[index];
-  const multiSelect = step.type === 'multi-choice' ? (draft[step.key] || []) : undefined;
+  const multiSelect = step.type === 'multi-choice' ? toChoiceValues(step, draft[step.key]) : undefined;
   await saveSession(telegramUserId, `${prefixFor(flow)}${index}`, { ...context, draft, multiSelect, flow });
   await sendStepPrompt(chatId, index, multiSelect, { flow });
 }
@@ -902,7 +988,7 @@ async function handleMenu(chatId, telegramUserId, action, username) {
     }
     const lines = apps.map((app) => {
       const a = app.assignments || {};
-      return `• ${a.student_level || '-'} · ${(a.subjects || []).join('/')} · ${a.location || '-'} — *${app.status}*`;
+      return `• ${a.student_level || '-'} · ${(a.subjects || []).join('/')} · ${a.region || a.location || '-'} — *${app.status}*`;
     });
     await sendMessage(chatId, `📋 Your applications:\n\n${lines.join('\n')}`);
     return;
@@ -977,7 +1063,7 @@ async function handleRegistrationInput(session, chatId, telegramUserId, input, s
 
     if (input.kind === 'callback' && input.data.startsWith('msel:')) {
       const val = input.data.slice('msel:'.length);
-      const updated = current.includes(val) ? current.filter((v) => v !== val) : [...current, val];
+      const updated = toggleMultiSelect(step, current, val);
       await saveSession(telegramUserId, `${statePrefix}${stepIndex}`, { ...session.context, draft, multiSelect: updated });
 
       const keyboard = [];
@@ -1188,6 +1274,30 @@ async function handleInput(session, chatId, telegramUserId, input) {
     return;
   }
 
+  if (state === 'admin_pick_region') {
+    if (!isAdmin(telegramUserId)) {
+      await saveSession(telegramUserId, 'idle', {});
+      await sendGreeting(chatId, undefined, telegramUserId);
+      return;
+    }
+    const { draft, requestId } = session.context;
+    if (input.kind === 'callback' && input.data === 'nav:cancel') {
+      await saveSession(telegramUserId, 'idle', {});
+      await sendMessage(chatId, 'Cancelled — nothing was posted.');
+      await sendGreeting(chatId, undefined, telegramUserId);
+      return;
+    }
+    if (input.kind === 'callback' && input.data?.startsWith('region:')) {
+      const region = input.data.slice('region:'.length);
+      if ([...REGION_CHOICES.map(([, v]) => v), ONLINE].includes(region)) {
+        await showAssignmentConfirm(chatId, telegramUserId, { ...draft, region }, requestId);
+        return;
+      }
+    }
+    await promptAssignmentRegion(chatId, telegramUserId, draft, requestId);
+    return;
+  }
+
   if (state === 'admin_confirm_assignment') {
     if (!isAdmin(telegramUserId)) {
       await saveSession(telegramUserId, 'idle', {});
@@ -1253,10 +1363,11 @@ async function handleInput(session, chatId, telegramUserId, input) {
       return;
     }
     const draft = draftFromRequest(request);
-    await saveSession(telegramUserId, 'admin_confirm_assignment', { draft, requestId });
-    await sendMessage(chatId, formatAssignmentDraft(draft), [
-      [{ text: '✅ Confirm & post', callback_data: 'nav:confirm' }, { text: '🚫 Cancel', callback_data: 'nav:cancel' }],
-    ]);
+    if (!draft.region) {
+      await promptAssignmentRegion(chatId, telegramUserId, draft, requestId);
+      return;
+    }
+    await showAssignmentConfirm(chatId, telegramUserId, draft, requestId);
     return;
   }
   // Unrecognized input while idle — just re-show the greeting.
@@ -1328,4 +1439,10 @@ module.exports.__testables = {
   navRow,
   columnForStep,
   valueForStoredField,
+  toChoiceValues,
+  toggleMultiSelect,
+  scoreAssignmentForTutor,
+  regionForMatching,
+  draftFromRequest,
+  formatArea,
 };
