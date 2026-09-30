@@ -1,0 +1,308 @@
+<!--
+  TeachToReach — live assignments board for ttrhometuition.sg/assignments/
+
+  Paste this whole file into an Elementor "HTML" widget (needs a WordPress
+  Administrator account — lower roles strip the <script>). It reads open
+  assignments straight from Supabase, so the page updates by itself whenever
+  an assignment is posted or closed through the Telegram bot. Nothing here is
+  edited by hand.
+
+  Everything is scoped under #ttr-assignments so it can't clash with the
+  Astra theme or Elementor styles, and it inherits the site's own fonts.
+
+  Set DEMO to true to show built-in sample data instead of the live database
+  (for previews before real assignments exist).
+-->
+<div id="ttr-assignments" aria-live="polite"></div>
+
+<style>
+#ttr-assignments {
+  --ttr-teal: #007991;
+  --ttr-teal-dark: #005f72;
+  --ttr-orange: #ff9635;
+  --ttr-ink: #22323d;
+  --ttr-muted: #5b6b76;
+  --ttr-line: #d8e0e4;
+  --ttr-bg: #ecf0f2;
+  --ttr-card: #ffffff;
+  color: var(--ttr-ink);
+  font-family: "Open Sans", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+#ttr-assignments *, #ttr-assignments *::before, #ttr-assignments *::after { box-sizing: border-box; }
+#ttr-assignments h3, #ttr-assignments .ttr-title { font-family: Poppins, "Open Sans", sans-serif; font-weight: 600; }
+
+/* Telegram call-to-action */
+#ttr-assignments .ttr-cta {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px;
+  background: var(--ttr-teal); color: #fff; border-radius: 12px; padding: 18px 22px; margin-bottom: 20px;
+}
+#ttr-assignments .ttr-cta h3 { margin: 0 0 2px; font-size: 18px; color: #fff; }
+#ttr-assignments .ttr-cta p { margin: 0; opacity: .9; font-size: 14px; }
+#ttr-assignments .ttr-cta-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+#ttr-assignments .ttr-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 42px; padding: 10px 18px; border-radius: 8px; border: 0;
+  font: 600 14px/1.2 Poppins, "Open Sans", sans-serif; text-decoration: none; cursor: pointer;
+  transition: background-color .15s, transform .15s;
+}
+#ttr-assignments .ttr-btn:hover { transform: translateY(-1px); }
+#ttr-assignments .ttr-btn:focus-visible { outline: 3px solid var(--ttr-orange); outline-offset: 2px; }
+#ttr-assignments .ttr-btn-orange { background: var(--ttr-orange); color: #22323d; }
+#ttr-assignments .ttr-btn-orange:hover { background: #ffa956; color: #22323d; }
+#ttr-assignments .ttr-btn-ghost { background: rgba(255,255,255,.14); color: #fff; }
+#ttr-assignments .ttr-btn-ghost:hover { background: rgba(255,255,255,.24); color: #fff; }
+#ttr-assignments .ttr-btn-teal { background: var(--ttr-teal); color: #fff; width: 100%; }
+#ttr-assignments .ttr-btn-teal:hover { background: var(--ttr-teal-dark); color: #fff; }
+
+/* Filters */
+#ttr-assignments .ttr-filters {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;
+  background: var(--ttr-card); border: 1px solid var(--ttr-line); border-radius: 12px; padding: 14px; margin-bottom: 14px;
+}
+#ttr-assignments .ttr-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+#ttr-assignments .ttr-field label { font-size: 12px; font-weight: 600; color: var(--ttr-muted); text-transform: uppercase; letter-spacing: .04em; }
+#ttr-assignments select, #ttr-assignments input[type="search"] {
+  width: 100%; min-height: 42px; padding: 8px 10px; margin: 0;
+  border: 1px solid var(--ttr-line); border-radius: 8px; background: #fff; color: var(--ttr-ink);
+  font: 400 14px "Open Sans", sans-serif; box-shadow: none;
+}
+#ttr-assignments select:focus, #ttr-assignments input[type="search"]:focus { outline: 2px solid var(--ttr-teal); outline-offset: 0; border-color: var(--ttr-teal); }
+
+#ttr-assignments .ttr-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 12px; }
+#ttr-assignments .ttr-count { font-size: 14px; color: var(--ttr-muted); }
+#ttr-assignments .ttr-count b { color: var(--ttr-ink); }
+#ttr-assignments .ttr-reset { background: none; border: 0; padding: 4px; color: var(--ttr-teal); font: 600 14px "Open Sans", sans-serif; cursor: pointer; text-decoration: underline; }
+
+/* Cards */
+#ttr-assignments .ttr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+#ttr-assignments .ttr-card {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--ttr-card); border: 1px solid var(--ttr-line); border-radius: 12px; padding: 18px;
+}
+#ttr-assignments .ttr-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#ttr-assignments .ttr-code { font: 600 13px Poppins, sans-serif; color: var(--ttr-teal); background: #e3f1f4; padding: 3px 9px; border-radius: 999px; }
+#ttr-assignments .ttr-date { font-size: 13px; color: var(--ttr-muted); }
+#ttr-assignments .ttr-title { font-size: 17px; line-height: 1.35; margin: 0; color: var(--ttr-ink); }
+#ttr-assignments dl { display: grid; grid-template-columns: 84px 1fr; gap: 4px 10px; margin: 0; font-size: 14px; }
+#ttr-assignments dt { color: var(--ttr-muted); font-weight: 600; margin: 0; }
+#ttr-assignments dd { margin: 0; overflow-wrap: anywhere; }
+#ttr-assignments .ttr-notes { margin: 0; font-size: 14px; color: var(--ttr-ink); background: var(--ttr-bg); border-radius: 8px; padding: 10px 12px; white-space: pre-line; overflow-wrap: anywhere; }
+#ttr-assignments .ttr-card .ttr-btn { margin-top: auto; }
+
+#ttr-assignments .ttr-empty { background: var(--ttr-card); border: 1px dashed var(--ttr-line); border-radius: 12px; padding: 32px 20px; text-align: center; color: var(--ttr-muted); }
+#ttr-assignments .ttr-empty b { display: block; color: var(--ttr-ink); font: 600 16px Poppins, sans-serif; margin-bottom: 4px; }
+#ttr-assignments .ttr-demo { font-size: 13px; background: #fff4e8; border: 1px solid #ffd3a8; color: #7a4a14; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+
+@media (max-width: 900px) {
+  #ttr-assignments .ttr-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #ttr-assignments .ttr-field-search { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  #ttr-assignments .ttr-grid { grid-template-columns: 1fr; }
+  #ttr-assignments .ttr-cta { padding: 16px; }
+  #ttr-assignments .ttr-cta-actions, #ttr-assignments .ttr-cta-actions .ttr-btn { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { #ttr-assignments .ttr-btn { transition: none; } #ttr-assignments .ttr-btn:hover { transform: none; } }
+</style>
+
+<script>
+(function () {
+  // ---- Config -------------------------------------------------------------
+  var DEMO = false;
+  var SUPABASE_URL = 'https://iyfkunwywlqfgtyqouqp.supabase.co';
+  // Public "anon" key — safe to publish. Row Level Security only lets it
+  // read OPEN assignments; tutors, parents and applications stay private.
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Zmt1bnd5d2xxZmd0eXFvdXFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MjM3MjksImV4cCI6MjA5OTA5OTcyOX0.MZi1hwb4G2xPo16tUBaCtd5EXbNwGE8nGG1v6mR3AC4';
+  var BOT_USERNAME = 'TeachToReachBot';
+  var CHANNEL_URL = 'https://t.me/tuitionassignmentsttrsg';
+
+  var REGIONS = ['North', 'North-East', 'East', 'West', 'Central', 'Online'];
+  var LEVELS = ['Preschool', 'Primary', 'Secondary', 'JC / A-Level', 'IB / IP', 'Polytechnic'];
+
+  var root = document.getElementById('ttr-assignments');
+  if (!root) return;
+  if (/[?&]ttr_demo=1\b/.test(location.search)) DEMO = true;
+
+  // ---- Helpers ------------------------------------------------------------
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // Same buckets the bot uses; student_level is text like "Secondary 3–4 (O-Level)".
+  function levelBucket(text) {
+    var t = String(text || '').toLowerCase();
+    if (/presch|kinder|nursery|\bk[12]\b/.test(t)) return 'Preschool';
+    if (/poly/.test(t)) return 'Polytechnic';
+    if (/\bib\b|\bip\b/.test(t)) return 'IB / IP';
+    if (/\bjc\b|a-level|a level/.test(t)) return 'JC / A-Level';
+    if (/\bsec\b|secondary/.test(t)) return 'Secondary';
+    if (/\bpri\b|primary|\bp[1-6]\b/.test(t)) return 'Primary';
+    return null;
+  }
+
+  function formatArea(a) {
+    if (a.region === 'Online') return a.location ? 'Online (' + a.location + ')' : 'Online';
+    if (a.location && a.region) return a.location + ' (' + a.region + ')';
+    return a.location || a.region || '-';
+  }
+
+  function formatRate(a) {
+    if (a.rate_min && a.rate_max) return '$' + a.rate_min + '–' + a.rate_max + '/hr';
+    if (a.rate_min && Number(a.rate_min) > 0) return 'From $' + a.rate_min + '/hr';
+    if (a.rate_max) return 'Up to $' + a.rate_max + '/hr';
+    return 'Please quote';
+  }
+
+  function formatDate(iso) {
+    var d = new Date(iso);
+    var days = Math.floor((Date.now() - d.getTime()) / 86400000);
+    if (days <= 0) return 'Posted today';
+    if (days === 1) return 'Posted yesterday';
+    if (days < 7) return 'Posted ' + days + ' days ago';
+    return 'Posted ' + d.toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  // Same deep link the Telegram channel's Apply button uses.
+  function applyUrl(a) {
+    return 'https://t.me/' + BOT_USERNAME + '?start=assignment_' + String(a.id).replace(/-/g, '');
+  }
+
+  function options(values, allLabel) {
+    return '<option value="">' + allLabel + '</option>' + values.map(function (v) {
+      return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+    }).join('');
+  }
+
+  // ---- Data ---------------------------------------------------------------
+  function demoData() {
+    var day = 86400000, now = Date.now();
+    function ago(n) { return new Date(now - n * day).toISOString(); }
+    return [
+      { id: '00000000-0000-0000-0000-000000000010', code: 'A010', created_at: ago(0), student_level: 'Secondary 3–4 (O-Level)', subjects: ['Mathematics', 'Physics'], region: 'East', location: 'Tampines, near Tampines West MRT', rate_min: '40', rate_max: '55', frequency: '1x/week', notes: 'Boy, Sec 3 Express. Weak in A-Math algebra.\nPrefers weekday evenings. Long-term commitment till O Levels.' },
+      { id: '00000000-0000-0000-0000-000000000009', code: 'A009', created_at: ago(1), student_level: 'Primary 4–6 (PSLE)', subjects: ['Science'], region: 'North-East', location: 'Punggol, near Sumang LRT', rate_min: '30', rate_max: '45', frequency: '1x/week', notes: 'Girl, P5. Looking for a patient tutor with PSLE Science experience.' },
+      { id: '00000000-0000-0000-0000-000000000008', code: 'A008', created_at: ago(1), student_level: 'JC 1–2 (A-Level)', subjects: ['Economics'], region: 'Online', location: '', rate_min: '60', rate_max: '80', frequency: '2x/week', notes: 'JC2 student, prelims in 3 weeks. Ex-MOE or full-time tutors preferred.' },
+      { id: '00000000-0000-0000-0000-000000000007', code: 'A007', created_at: ago(3), student_level: 'Primary 1–3', subjects: ['English', 'Chinese'], region: 'West', location: 'Jurong East, near Chinese Garden MRT', rate_min: '25', rate_max: '35', frequency: '2x/week', notes: 'Twins, P2. Back-to-back lessons on Saturday mornings.' },
+      { id: '00000000-0000-0000-0000-000000000006', code: 'A006', created_at: ago(5), student_level: 'Secondary 1–2', subjects: ['Mathematics'], region: 'Central', location: 'Bishan, near Bishan MRT', rate_min: '', rate_max: '', frequency: '1x/week', notes: 'Sec 1 G3. Parent open to quotes.' },
+      { id: '00000000-0000-0000-0000-000000000005', code: 'A005', created_at: ago(9), student_level: 'Preschool / Kindergarten', subjects: ['English'], region: 'North', location: 'Woodlands, near Woodlands MRT', rate_min: '25', rate_max: '30', frequency: '1x/week', notes: 'K2 phonics and reading readiness for P1.' },
+    ];
+  }
+
+  function fetchLive() {
+    var cols = 'id,code,created_at,student_level,subjects,region,location,rate_min,rate_max,frequency,notes';
+    return fetch(SUPABASE_URL + '/rest/v1/assignments?status=eq.open&order=created_at.desc&limit=200&select=' + cols, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY },
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    });
+  }
+
+  // ---- Render -------------------------------------------------------------
+  var all = [];
+  var state = { level: '', subject: '', region: '', q: '', sort: 'newest' };
+
+  function shell(subjects) {
+    root.innerHTML =
+      '<div class="ttr-cta">' +
+        // Once tutor job alerts ship, this can promise "we'll message you when
+        // an assignment matches" — until then it only describes what exists.
+        '<div><h3>Apply in one tap on Telegram</h3>' +
+        '<p>Register once with our bot, then apply to any assignment here or in our channel without filling in forms again.</p></div>' +
+        '<div class="ttr-cta-actions">' +
+          '<a class="ttr-btn ttr-btn-orange" href="https://t.me/' + BOT_USERNAME + '?start=register" target="_blank" rel="noopener">Register as a tutor</a>' +
+          '<a class="ttr-btn ttr-btn-ghost" href="' + CHANNEL_URL + '" target="_blank" rel="noopener">Join the channel</a>' +
+        '</div>' +
+      '</div>' +
+      (DEMO ? '<div class="ttr-demo">Demo preview with sample assignments — not real listings.</div>' : '') +
+      '<div class="ttr-filters" role="search">' +
+        '<div class="ttr-field"><label for="ttr-level">Level</label><select id="ttr-level">' + options(LEVELS, 'All levels') + '</select></div>' +
+        '<div class="ttr-field"><label for="ttr-subject">Subject</label><select id="ttr-subject">' + options(subjects, 'All subjects') + '</select></div>' +
+        '<div class="ttr-field"><label for="ttr-region">Region</label><select id="ttr-region">' + options(REGIONS, 'All regions') + '</select></div>' +
+        '<div class="ttr-field"><label for="ttr-sort">Sort</label><select id="ttr-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></div>' +
+        '<div class="ttr-field ttr-field-search"><label for="ttr-q">Code or keyword</label><input id="ttr-q" type="search" placeholder="e.g. A012 or Tampines" autocomplete="off"></div>' +
+      '</div>' +
+      '<div class="ttr-bar"><span class="ttr-count" id="ttr-count"></span><button type="button" class="ttr-reset" id="ttr-reset" hidden>Clear filters</button></div>' +
+      '<div id="ttr-list"></div>';
+
+    ['level', 'subject', 'region', 'sort'].forEach(function (k) {
+      document.getElementById('ttr-' + k).addEventListener('change', function (e) { state[k] = e.target.value; renderList(); });
+    });
+    document.getElementById('ttr-q').addEventListener('input', function (e) { state.q = e.target.value.trim().toLowerCase(); renderList(); });
+    document.getElementById('ttr-reset').addEventListener('click', function () {
+      state = { level: '', subject: '', region: '', q: '', sort: 'newest' };
+      ['level', 'subject', 'region', 'q'].forEach(function (k) { document.getElementById('ttr-' + k).value = ''; });
+      document.getElementById('ttr-sort').value = 'newest';
+      renderList();
+    });
+  }
+
+  function matches(a) {
+    if (state.level && levelBucket(a.student_level) !== state.level) return false;
+    if (state.subject && (a.subjects || []).indexOf(state.subject) === -1) return false;
+    if (state.region && a.region !== state.region) return false;
+    if (state.q) {
+      var hay = [a.code, a.student_level, (a.subjects || []).join(' '), a.region, a.location, a.notes].join(' ').toLowerCase();
+      if (hay.indexOf(state.q) === -1) return false;
+    }
+    return true;
+  }
+
+  function card(a) {
+    var subjects = (a.subjects || []).join(', ');
+    return '<article class="ttr-card">' +
+      '<div class="ttr-card-top">' + (a.code ? '<span class="ttr-code">' + esc(a.code) + '</span>' : '<span></span>') +
+      '<span class="ttr-date">' + esc(formatDate(a.created_at)) + '</span></div>' +
+      '<h3 class="ttr-title">' + esc(a.student_level || 'Assignment') + (subjects ? ' · ' + esc(subjects) : '') + '</h3>' +
+      '<dl><dt>Area</dt><dd>' + esc(formatArea(a)) + '</dd>' +
+      '<dt>Rate</dt><dd>' + esc(formatRate(a)) + '</dd>' +
+      '<dt>Lessons</dt><dd>' + esc(a.frequency || '-') + '</dd></dl>' +
+      (a.notes ? '<p class="ttr-notes">' + esc(a.notes) + '</p>' : '') +
+      '<a class="ttr-btn ttr-btn-teal" href="' + esc(applyUrl(a)) + '" target="_blank" rel="noopener"' +
+      (a.code ? ' aria-label="Apply via Telegram for ' + esc(a.code) + '"' : '') + '>Apply via Telegram</a>' +
+      '</article>';
+  }
+
+  function renderList() {
+    var list = all.filter(matches).sort(function (x, y) {
+      var d = new Date(y.created_at) - new Date(x.created_at);
+      return state.sort === 'oldest' ? -d : d;
+    });
+    var filtered = state.level || state.subject || state.region || state.q;
+    document.getElementById('ttr-reset').hidden = !filtered;
+    document.getElementById('ttr-count').innerHTML = all.length
+      ? '<b>' + list.length + '</b> open assignment' + (list.length === 1 ? '' : 's') + (filtered ? ' match your filters' : '')
+      : '';
+    var el = document.getElementById('ttr-list');
+    if (!all.length) {
+      el.innerHTML = '<div class="ttr-empty"><b>No open assignments right now</b>New ones are posted often. Join our Telegram channel to see them as soon as they go up.</div>';
+    } else if (!list.length) {
+      el.innerHTML = '<div class="ttr-empty"><b>No assignments match these filters</b>Try widening the region or level, or clear the filters.</div>';
+    } else {
+      el.innerHTML = '<div class="ttr-grid">' + list.map(card).join('') + '</div>';
+    }
+  }
+
+  function start(rows) {
+    all = rows || [];
+    var subjects = [];
+    all.forEach(function (a) { (a.subjects || []).forEach(function (s) { if (subjects.indexOf(s) === -1) subjects.push(s); }); });
+    subjects.sort();
+    shell(subjects);
+    renderList();
+  }
+
+  root.innerHTML = '<div class="ttr-empty">Loading assignments…</div>';
+  if (DEMO) { start(demoData()); return; }
+  fetchLive().then(start).catch(function (err) {
+    console.error('TeachToReach assignments failed to load:', err);
+    root.innerHTML = '<div class="ttr-empty"><b>Assignments couldn\'t load just now</b>Please refresh, or see the latest on our <a href="' + CHANNEL_URL + '" target="_blank" rel="noopener">Telegram channel</a>.</div>';
+  });
+})();
+</script>

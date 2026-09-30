@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assignments demo</title>
+<!-- Local preview only: roughly mimics ttrhometuition.sg's page shell so the
+     widget can be judged in context. On the real site, only
+     assignments-widget.html is pasted into an Elementor HTML widget. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #ecf0f2; font-family: "Open Sans", sans-serif; color: #22323d; }
+  .hero { background: linear-gradient(rgba(0,121,145,.88), rgba(0,95,114,.92)); color: #fff; padding: 22px 16px 40px; }
+  .nav { max-width: 1100px; margin: 0 auto 36px; display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; font-size: 14px; }
+  .nav b { font-family: Poppins, sans-serif; font-size: 16px; margin-right: auto; }
+  .hero h1 { max-width: 1100px; margin: 0 auto 8px; font: 600 40px Poppins, sans-serif; }
+  .hero p { max-width: 1100px; margin: 0 auto; opacity: .9; }
+  main { padding: 28px 16px 60px; }
+  .note { max-width: 1100px; margin: 0 auto 16px; font-size: 13px; color: #5b6b76; }
+</style>
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav"><b>TTR Home Tuition</b><span>Home</span><span>About Us</span><span>Tuition Rates</span><span>Meet Our Tutors</span><span>Assignments</span><span>Contact Us</span></nav>
+    <h1>Assignments</h1>
+    <p>Open tuition assignments across Singapore. Filter by level, subject and region, then apply in one tap on Telegram.</p>
+  </header>
+  <main>
+    <p class="note">Local preview. Add <code>?ttr_demo=1</code> to the URL for sample data, or leave it off to read the live database.</p>
+    <div id="mount"></div>
+  </main>
+<script>
+  // Load the exact snippet that gets pasted into WordPress, so the preview
+  // can't drift from what ships. innerHTML doesn't run <script> tags, so the
+  // script is re-created to execute.
+  fetch('assignments-widget.html').then(function (r) { return r.text(); }).then(function (html) {
+    var mount = document.getElementById('mount');
+    mount.innerHTML = html;
+    mount.querySelectorAll('script').forEach(function (old) {
+      var s = document.createElement('script');
+      s.textContent = old.textContent;
+      old.replaceWith(s);
+    });
+  });
+</script>
+</body>
+</html>
