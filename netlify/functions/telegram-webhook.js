@@ -385,7 +385,7 @@ async function getApplicationsForTutor(telegramUserId) {
   return (
     (await sb(
       `applications?tutor_telegram_id=eq.${telegramUserId}&order=created_at.desc&limit=10` +
-        `&select=status,created_at,assignments(student_level,subjects,location)`
+        `&select=status,created_at,assignments(code,student_level,subjects,region,location)`
     )) || []
   );
 }
@@ -434,7 +434,7 @@ function formatArea(a) {
 
 function formatAssignment(a) {
   return (
-    `📋 Assignment\n\n` +
+    `📋 Assignment ${a.code || ''}\n\n` +
     `Level: ${a.student_level || '-'}\n` +
     `Subjects: ${(a.subjects || []).join(', ') || '-'}\n` +
     `Area: ${formatArea(a)}\n` +
@@ -450,7 +450,7 @@ function formatAssignmentSummary(a) {
   const subjects = (a.subjects || []).slice(0, 2).join('/') || '?';
   const more = (a.subjects || []).length > 2 ? '+' : '';
   const scorePrefix = typeof a._score === 'number' && a._score > 0 ? `🎯 ${a._score}% · ` : '';
-  return `${scorePrefix}${a.student_level || '?'} · ${subjects}${more} · ${a.region || a.location || '?'} · $${a.rate_min || '?'}–${a.rate_max || '?'}/hr`;
+  return `${scorePrefix}${a.code ? `${a.code} · ` : ''}${a.student_level || '?'} · ${subjects}${more} · ${a.region || a.location || '?'} · $${a.rate_min || '?'}–${a.rate_max || '?'}/hr`;
 }
 
 // Most STEPS keys map 1:1 onto tutor_profiles columns; these two don't.
@@ -988,7 +988,7 @@ async function handleMenu(chatId, telegramUserId, action, username) {
     }
     const lines = apps.map((app) => {
       const a = app.assignments || {};
-      return `• ${a.student_level || '-'} · ${(a.subjects || []).join('/')} · ${a.region || a.location || '-'} — *${app.status}*`;
+      return `• ${a.code ? `${a.code} · ` : ''}${a.student_level || '-'} · ${(a.subjects || []).join('/')} · ${a.region || a.location || '-'} — *${app.status}*`;
     });
     await sendMessage(chatId, `📋 Your applications:\n\n${lines.join('\n')}`);
     return;
@@ -1314,7 +1314,7 @@ async function handleInput(session, chatId, telegramUserId, input) {
       const { draft, requestId } = session.context;
       const assignment = await createAssignmentFromDraft(draft, requestId);
       await saveSession(telegramUserId, 'idle', {});
-      await sendMessage(chatId, assignment ? '✅ Posted! It will appear in the channel shortly.' : '⚠️ Something went wrong creating this assignment.');
+      await sendMessage(chatId, assignment ? `✅ Posted${assignment.code ? ` as ${assignment.code}` : ''}! It will appear in the channel shortly.` : '⚠️ Something went wrong creating this assignment.');
       return;
     }
     await sendMessage(chatId, 'Please tap Confirm or Cancel.');

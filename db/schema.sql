@@ -319,3 +319,25 @@ alter table tutor_requests add column if not exists converted_assignment_id uuid
 -- ==========================================================================
 alter table tutor_requests add column if not exists region text;
 alter table assignments add column if not exists region text;
+
+-- ==========================================================================
+-- Short assignment codes (A005, A006, …)
+--
+-- Tutors and Grace need something short to quote ("I'm applying for A012")
+-- instead of the internal uuid. Every new assignment gets the next code
+-- automatically. Starts at A005 because Grace's current website already
+-- shows hand-typed A001–A004, so reusing those numbers would confuse
+-- tutors who saw the old listings. Grows past A999 to A1000 rather than
+-- wrapping (lpad would otherwise truncate '1000' to '100').
+-- ==========================================================================
+create sequence if not exists assignment_code_seq start 5;
+
+create or replace function next_assignment_code()
+returns text
+language sql
+as $$
+  select 'A' || lpad(n::text, greatest(3, length(n::text)), '0')
+  from (select nextval('assignment_code_seq') as n) s;
+$$;
+
+alter table assignments add column if not exists code text unique default next_assignment_code();

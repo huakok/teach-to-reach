@@ -92,7 +92,7 @@ exports.handler = async (event) => {
     html = `
       <h2>New assignment application</h2>
       <p>
-        <b>Assignment:</b> ${escapeHtml(assignment?.student_level) || '-'} ·
+        <b>Assignment:</b> ${assignment?.code ? `${escapeHtml(assignment.code)} · ` : ''}${escapeHtml(assignment?.student_level) || '-'} ·
         ${(assignment?.subjects || []).join(', ') || '-'} ·
         ${escapeHtml(assignment?.location) || '-'}${assignment?.region ? ` (${escapeHtml(assignment.region)})` : ''} ·
         $${escapeHtml(assignment?.rate_min) || '?'}–${escapeHtml(assignment?.rate_max) || '?'}/hr

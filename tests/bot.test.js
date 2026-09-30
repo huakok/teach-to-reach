@@ -235,5 +235,23 @@ const lastKeyboard = () => { const c = [...tgCalls].reverse().find((c) => c.body
     assert.ok(post.formatAssignmentMessage({ location: 'Punggol', region: 'North-East', subjects: [] }).includes('Area: Punggol (North-East)'));
   });
 
+  await t('assignment codes shown in bot detail, list summary, and channel post', () => {
+    const a = { code: 'A012', student_level: 'Sec 3', subjects: ['Mathematics'], region: 'East', location: 'Tampines' };
+    assert.ok(T.formatAssignment(a).startsWith('📋 Assignment A012'));
+    assert.ok(T.formatAssignmentSummary(a).startsWith('A012 · Sec 3'));
+    assert.ok(post.formatAssignmentMessage(a).startsWith('📋 New Assignment A012'));
+    assert.ok(T.formatAssignmentSummary({ ...a, code: null }).startsWith('Sec 3'), 'rows without a code still render');
+  });
+
+  await t('admin gets the new code back after posting', async () => {
+    const req = { id: 'bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee', parent_name: 'X', student_level: 'Primary 4–6 (PSLE)', subjects: ['Science'], region: 'North', location: 'Yishun', converted_assignment_id: null };
+    db.tutor_requests.push(req);
+    const realPush = db.assignments.push.bind(db.assignments);
+    db.assignments.push = (row) => realPush({ code: 'A077', ...row });
+    await atap('convertreq:bbbbbbbbbbbbccccddddeeeeeeeeeeee');
+    await atap('nav:confirm');
+    assert.ok(tgCalls.at(-1).body.text.includes('Posted as A077'), tgCalls.at(-1).body.text);
+  });
+
   console.log(`\n${passed} passed`);
 })().catch((e) => { console.error('✗', e.message); process.exit(1); });

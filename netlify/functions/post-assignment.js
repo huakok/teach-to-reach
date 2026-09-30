@@ -29,7 +29,7 @@ function formatArea(a) {
 
 function formatAssignmentMessage(a) {
   return (
-    `📋 New Assignment\n\n` +
+    `📋 New Assignment ${a.code || ''}\n\n` +
     `Level: ${a.student_level || '-'}\n` +
     `Subjects: ${(a.subjects || []).join(', ') || '-'}\n` +
     `Area: ${formatArea(a)}\n` +
